@@ -7,7 +7,7 @@ import { farcasterMiniApp } from "@farcaster/miniapp-wagmi-connector"
 
 const config = createConfig({
   chains: [base, baseSepolia],
-  connectors: () => [farcasterMiniApp()],
+  connectors: [farcasterMiniApp], // Remove the parentheses here too
   ssr: true,
   transports: {
     [base.id]: http(),
