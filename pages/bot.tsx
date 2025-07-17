@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
-import { injected } from 'wagmi/connectors' // Updated import
+import { injected } from 'wagmi/connectors'
 
 export default function BotLobby() {
   const { address, isConnected } = useAccount()
