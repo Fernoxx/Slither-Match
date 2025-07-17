@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
-import { InjectedConnector } from 'wagmi/connectors/injected'
+import { injected } from 'wagmi/connectors' // Updated import
 
 export default function BotLobby() {
   const { address, isConnected } = useAccount()
-  const { connect } = useConnect({ connector: new InjectedConnector() })
+  const { connect } = useConnect()
   const { disconnect } = useDisconnect()
 
   const [matchStarted, setMatchStarted] = useState(false)
@@ -34,7 +34,10 @@ export default function BotLobby() {
       <h1 className="text-3xl font-bold mb-4">Bot Lobby</h1>
 
       {!isConnected ? (
-        <button onClick={() => connect()} className="px-4 py-2 bg-purple-600 text-white rounded">
+        <button 
+          onClick={() => connect({ connector: injected() })} 
+          className="px-4 py-2 bg-purple-600 text-white rounded"
+        >
           Connect Wallet
         </button>
       ) : (
@@ -61,7 +64,7 @@ export default function BotLobby() {
           {gameOver && (
             <>
               <p className="text-lg mt-4">Game Over! Your Score: {score}</p>
-              <a
+              
                 href="https://warpcast.com/~/compose?text=I%20won%20a%20SlitherMatch%20Bot%20lobby%20match%20🎮%0Ahttps://slithermatch.vercel.app/bot"
                 target="_blank"
                 rel="noopener noreferrer"
