@@ -4,7 +4,7 @@ import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector'
 
 export const config = createConfig({
   chains: [base, baseSepolia],
-  connectors: [farcasterMiniApp()], // Remove the arrow function wrapper
+  connectors: [farcasterMiniApp], // Remove the parentheses
   ssr: true,
   transports: {
     [base.id]: http(),
