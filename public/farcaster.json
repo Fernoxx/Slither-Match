@@ -1,0 +1,6 @@
+{
+  "name": "SlitherMatch",
+  "description": "Multiplayer mini-snake battle for 3-5 players. $1 entry. Winner takes all.",
+  "url": "https://slithermatch.vercel.app",
+  "icon": "https://slithermatch.vercel.app/icon.png"
+}
