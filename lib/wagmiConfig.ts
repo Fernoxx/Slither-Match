@@ -1,13 +1,12 @@
-import { createConfig, createClient, http } from "wagmi"
-import { base, baseSepolia } from "wagmi/chains"
-import { farcasterFrame } from "@farcaster/frame-wagmi-connector"
+import { createConfig, http } from 'wagmi'
+import { base } from 'wagmi/chains'
+import { farcasterFrame } from '@farcaster/frame-wagmi-connector'
 
 export const config = createConfig({
-  chains: [base, baseSepolia],
+  chains: [base],
   connectors: [farcasterFrame()],
+  transports: {
+    [base.id]: http(),
+  },
   ssr: true,
-  client: createClient({
-    chains: [base, baseSepolia],
-    transport: http()
-  })
 })

@@ -1,56 +1,36 @@
 import { useEffect, useState } from 'react'
-import { useAccount, useContractRead, useContractWrite, useWalletClient } from 'wagmi'
+import { useAccount, useReadContract, useWriteContract } from 'wagmi'
 import { slitherMatchABI } from '../lib/slitherMatchABI'
 
 const CONTRACT_ADDRESS_MAINNET = '0xdE5aC11A48f6bAaCd45b6907D4701979743Bf08c'
-const CONTRACT_ADDRESS_SEPOLIA = '0x0ca8ea8190c62d5ac132a55d1968728f003220bf'
-
+// const CONTRACT_ADDRESS_SEPOLIA = '0x0ca8ea8190c62d5ac132a55d1968728f003220bf'
 const CONTRACT_ADDRESS = CONTRACT_ADDRESS_MAINNET // use sepolia if needed
 
 export default function Home() {
   const { address, isConnected } = useAccount()
   const [lobbyId, setLobbyId] = useState(1)
-  const [players, setPlayers] = useState([])
+  const [players, setPlayers] = useState<any[]>([])
   const [joinTime, setJoinTime] = useState<number | null>(null)
   const [countdown, setCountdown] = useState<number | null>(null)
   const [refundable, setRefundable] = useState(false)
   const [currentTime, setCurrentTime] = useState<number>(Date.now())
 
-  const { data: playersInLobby, refetch: refetchPlayers } = useContractRead({
+  const { data: playersInLobby, refetch } = useReadContract({
     address: CONTRACT_ADDRESS,
     abi: slitherMatchABI,
     functionName: 'getPlayers',
     args: [lobbyId],
-    watch: true,
-    onSuccess(data) {
-      setPlayers(data as any[])
+    query: {
+      watch: true,
+      onSuccess(data) {
+        setPlayers(data as any[])
+      }
     }
   })
 
-  const { write: joinLobby } = useContractWrite({
-    address: CONTRACT_ADDRESS,
-    abi: slitherMatchABI,
-    functionName: 'joinLobby',
-    args: [lobbyId],
-    value: BigInt(1000000000000000),
-    onSuccess() {
-      setJoinTime(Date.now())
-    }
-  })
-
-  const { write: markRefundable } = useContractWrite({
-    address: CONTRACT_ADDRESS,
-    abi: slitherMatchABI,
-    functionName: 'markRefundable',
-    args: [lobbyId]
-  })
-
-  const { write: refund } = useContractWrite({
-    address: CONTRACT_ADDRESS,
-    abi: slitherMatchABI,
-    functionName: 'refund',
-    args: [lobbyId]
-  })
+  const { writeContract: joinLobby } = useWriteContract()
+  const { writeContract: markRefundable } = useWriteContract()
+  const { writeContract: refund } = useWriteContract()
 
   useEffect(() => {
     const interval = setInterval(() => setCurrentTime(Date.now()), 1000)
@@ -64,7 +44,6 @@ export default function Home() {
         if (diff <= 0) {
           clearInterval(countdownStart)
           setCountdown(null)
-          // start game here or trigger backend if needed
         } else {
           setCountdown(Math.floor(diff / 1000))
         }
@@ -98,7 +77,16 @@ export default function Home() {
 
       <button
         className="mt-4 bg-purple-600 text-white px-4 py-2 rounded"
-        onClick={() => joinLobby()}
+        onClick={() => {
+          joinLobby({
+            address: CONTRACT_ADDRESS,
+            abi: slitherMatchABI,
+            functionName: 'joinLobby',
+            args: [lobbyId],
+            value: BigInt(1e15)
+          })
+          setJoinTime(Date.now())
+        }}
       >
         Join Lobby
       </button>
@@ -109,8 +97,18 @@ export default function Home() {
           <button
             className="bg-red-600 text-white px-4 py-2 rounded"
             onClick={() => {
-              markRefundable()
-              refund()
+              markRefundable({
+                address: CONTRACT_ADDRESS,
+                abi: slitherMatchABI,
+                functionName: 'markRefundable',
+                args: [lobbyId]
+              })
+              refund({
+                address: CONTRACT_ADDRESS,
+                abi: slitherMatchABI,
+                functionName: 'refund',
+                args: [lobbyId]
+              })
             }}
           >
             Claim Refund
