@@ -1,7 +1,7 @@
-import { createConfig } from "wagmi"
 import { farcasterMiniApp } from "@farcaster/miniapp-wagmi-connector"
+import { createConfig } from "wagmi"
 
 export const config = createConfig({
-  connectors: farcasterMiniApp(),
+  connectors: [farcasterMiniApp()],
   ssr: true,
 })
