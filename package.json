@@ -18,7 +18,7 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
-    "@farcaster/miniapp-wagmi-connector": "^1.0.0",
+    "@farcaster/frame-wagmi-connector": "^1.0.0",
     "@openzeppelin/contracts": "^5.3.0",
     "@rainbow-me/rainbowkit": "^2.2.8",
     "next": "^14.2.30",

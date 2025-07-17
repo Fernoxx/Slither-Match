@@ -1,8 +1,9 @@
-import { farcasterMiniApp, farcasterChains } from "@farcaster/miniapp-wagmi-connector"
 import { createConfig } from "wagmi"
+import { base, baseSepolia } from "wagmi/chains"
+import { farcasterFrame } from "@farcaster/frame-wagmi-connector"
 
 export const config = createConfig({
-  chains: farcasterChains,
-  connectors: [() => farcasterMiniApp()],
+  chains: [base, baseSepolia],
+  connectors: [farcasterFrame()],
   ssr: true,
 })
