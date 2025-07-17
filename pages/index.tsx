@@ -63,58 +63,161 @@ export default function Home() {
   }, [currentTime, joinTime, players])
 
   return (
-    <div className="min-h-screen bg-[#F3E8FF] p-6 text-center">
-      <h1 className="text-3xl font-bold mb-4">SlitherMatch</h1>
-      <p className="mb-4">Lobby ID: {lobbyId}</p>
-      <p className="mb-2">Players: {players.length} / 5</p>
-      {players.map((p, i) => (
-        <div key={i} className="text-sm">{p}</div>
-      ))}
+    <div className="game-container min-h-screen p-6">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="lobby-title">SlitherMatch</h1>
+          <p className="text-purple-700 text-lg font-semibold">
+            Lobby ID: <span className="text-purple-900">{lobbyId}</span>
+          </p>
+        </div>
 
-      {countdown !== null && (
-        <div className="text-lg font-bold text-green-600 my-2">Game starts in: {countdown}s</div>
-      )}
+        {/* Main Game Board */}
+        <div className="game-board p-8 mb-6">
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center justify-center space-x-2 mb-4">
+              <div className="w-4 h-4 bg-purple-500 rounded-full"></div>
+              <span className="text-xl font-bold text-purple-800">
+                Players: {players.length} / 5
+              </span>
+              <div className="w-4 h-4 bg-purple-500 rounded-full"></div>
+            </div>
+            
+            {/* Players List */}
+            <div className="space-y-2 mb-6">
+              {players.map((player, index) => (
+                <div key={index} className="player-info">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+                        {index + 1}
+                      </div>
+                      <span className="text-purple-800 font-medium truncate">
+                        {player.slice(0, 6)}...{player.slice(-4)}
+                      </span>
+                    </div>
+                    <div className="text-green-600 font-semibold">
+                      ✓ Ready
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {/* Empty slots */}
+              {Array.from({ length: 5 - players.length }, (_, index) => (
+                <div key={`empty-${index}`} className="player-info opacity-50">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-gray-500 font-bold">
+                      {players.length + index + 1}
+                    </div>
+                    <span className="text-gray-500 font-medium">
+                      Waiting for player...
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
 
-      <button
-        className="mt-4 bg-purple-600 text-white px-4 py-2 rounded"
-        onClick={() => {
-          joinLobby({
-            address: CONTRACT_ADDRESS,
-            abi: slitherMatchABI,
-            functionName: 'joinLobby',
-            args: [lobbyId],
-            value: BigInt(1e15)
-          })
-          setJoinTime(Date.now())
-        }}
-      >
-        Join Lobby
-      </button>
+            {/* Countdown */}
+            {countdown !== null && (
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="countdown-text">
+                  🎮 Game starts in: {countdown}s
+                </div>
+              </div>
+            )}
 
-      {refundable && (
-        <>
-          <div className="my-4 text-red-600">Lobby inactive for 5+ mins. You can refund.</div>
-          <button
-            className="bg-red-600 text-white px-4 py-2 rounded"
-            onClick={() => {
-              markRefundable({
-                address: CONTRACT_ADDRESS,
-                abi: slitherMatchABI,
-                functionName: 'markRefundable',
-                args: [lobbyId]
-              })
-              refund({
-                address: CONTRACT_ADDRESS,
-                abi: slitherMatchABI,
-                functionName: 'refund',
-                args: [lobbyId]
-              })
-            }}
-          >
-            Claim Refund
-          </button>
-        </>
-      )}
+            {/* Join Button */}
+            <button
+              className="game-button text-lg px-8 py-4 mb-4"
+              onClick={() => {
+                joinLobby({
+                  address: CONTRACT_ADDRESS,
+                  abi: slitherMatchABI,
+                  functionName: 'joinLobby',
+                  args: [lobbyId],
+                  value: BigInt(1e15)
+                })
+                setJoinTime(Date.now())
+              }}
+            >
+              🚀 Join Lobby
+            </button>
+
+            {/* Refund Section */}
+            {refundable && (
+              <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="text-red-700 font-semibold mb-3">
+                  ⚠️ Lobby inactive for 5+ minutes. You can claim a refund.
+                </div>
+                <button
+                  className="refund-button"
+                  onClick={() => {
+                    markRefundable({
+                      address: CONTRACT_ADDRESS,
+                      abi: slitherMatchABI,
+                      functionName: 'markRefundable',
+                      args: [lobbyId]
+                    })
+                    refund({
+                      address: CONTRACT_ADDRESS,
+                      abi: slitherMatchABI,
+                      functionName: 'refund',
+                      args: [lobbyId]
+                    })
+                  }}
+                >
+                  💰 Claim Refund
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Game Rules */}
+        <div className="game-rules">
+          <h2 className="text-xl font-bold text-purple-800 mb-4 text-center">
+            Game Rules
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="rule-item">
+              <span className="rule-emoji">🔴</span>
+              <span>Red dots = 3 points</span>
+            </div>
+            <div className="rule-item">
+              <span className="rule-emoji">🟢</span>
+              <span>Green dots = 6 points</span>
+            </div>
+            <div className="rule-item">
+              <span className="rule-emoji">🟣</span>
+              <span>Purple dots = 12 points</span>
+            </div>
+            <div className="rule-item">
+              <span className="rule-emoji">⏰</span>
+              <span>Game lasts 3 minutes max</span>
+            </div>
+            <div className="rule-item">
+              <span className="rule-emoji">🏆</span>
+              <span>Winner: Last alive OR highest score</span>
+            </div>
+            <div className="rule-item">
+              <span className="rule-emoji">💰</span>
+              <span>Winner takes 100% of entry fees</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Connection Status */}
+        <div className="text-center mt-6">
+          <div className="inline-flex items-center space-x-2 px-4 py-2 bg-white/80 rounded-full border border-purple-200">
+            <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+            <span className="text-sm font-medium text-purple-800">
+              {isConnected ? `Connected: ${address?.slice(0, 6)}...${address?.slice(-4)}` : 'Not Connected'}
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
