@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body {
+    padding: 0;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen,
+      Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer components {
+  .game-container {
+    background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+    min-height: 100vh;
+  }
+  
+  .game-board {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(139, 92, 246, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+  }
+  
+  .player-info {
+    background: rgba(139, 92, 246, 0.1);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 8px 0;
+    border: 1px solid rgba(139, 92, 246, 0.2);
+  }
+  
+  .game-button {
+    background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 16px rgba(139, 92, 246, 0.3);
+  }
+  
+  .game-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+  }
+  
+  .game-button:active {
+    transform: translateY(0);
+  }
+  
+  .refund-button {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
+  }
+  
+  .refund-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+  }
+  
+  .countdown-text {
+    color: #059669;
+    font-weight: 700;
+    font-size: 1.25rem;
+    text-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);
+  }
+  
+  .lobby-title {
+    color: #6b21a8;
+    font-weight: 800;
+    font-size: 2.5rem;
+    text-shadow: 0 2px 8px rgba(107, 33, 168, 0.2);
+    margin-bottom: 1rem;
+  }
+  
+  .game-rules {
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+    border: 1px solid rgba(139, 92, 246, 0.2);
+  }
+  
+  .rule-item {
+    display: flex;
+    align-items: center;
+    margin: 8px 0;
+    color: #4c1d95;
+  }
+  
+  .rule-emoji {
+    margin-right: 8px;
+    font-size: 1.2rem;
+  }
+}
