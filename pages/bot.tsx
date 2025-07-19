@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
 import { injected } from 'wagmi/connectors'
+import { SnakeGame } from '../components/SnakeGame'
 
 export default function BotLobby() {
   const { address, isConnected } = useAccount()
@@ -11,23 +12,45 @@ export default function BotLobby() {
   const [countdown, setCountdown] = useState(3)
   const [score, setScore] = useState(0)
   const [gameOver, setGameOver] = useState(false)
+  const [gameResult, setGameResult] = useState<{ isWinner: boolean, finalScore: number } | null>(null)
 
   useEffect(() => {
     if (matchStarted && countdown > 0) {
       const timer = setTimeout(() => setCountdown(prev => prev - 1), 1000)
       return () => clearTimeout(timer)
     }
-    if (matchStarted && countdown === 0) {
-      // Start scoring simulation
-      const scoring = setInterval(() => {
-        setScore(s => s + Math.floor(Math.random() * 5))
-      }, 1000)
-      setTimeout(() => {
-        clearInterval(scoring)
-        setGameOver(true)
-      }, 30000)
-    }
   }, [matchStarted, countdown])
+
+  const handleStartGame = () => {
+    setMatchStarted(true)
+    setScore(0)
+    setGameOver(false)
+    setGameResult(null)
+  }
+
+  const handleGameOver = () => {
+    setGameOver(true)
+    setMatchStarted(false)
+  }
+
+  const handleGameWin = (finalScore: number, isWinner: boolean) => {
+    setGameResult({ isWinner, finalScore })
+    setGameOver(true)
+    setMatchStarted(false)
+  }
+
+  const handleScoreChange = (newScore: number) => {
+    setScore(newScore)
+  }
+
+  const handlePlayAgain = () => {
+    setMatchStarted(false)
+    setCountdown(3)
+    setScore(0)
+    setGameOver(false)
+    setGameResult(null)
+    handleStartGame()
+  }
 
   return (
     <main className="game-container min-h-screen flex flex-col items-center justify-center p-6">
@@ -82,7 +105,7 @@ export default function BotLobby() {
                     Ready to challenge the bots?
                   </div>
                   <button 
-                    onClick={() => setMatchStarted(true)} 
+                    onClick={handleStartGame} 
                     className="game-button text-lg px-8 py-4"
                   >
                     🚀 Start Bot Match
@@ -103,16 +126,24 @@ export default function BotLobby() {
 
               {matchStarted && countdown === 0 && !gameOver && (
                 <div className="space-y-4">
-                  <div className="p-6 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="text-2xl font-bold text-green-800 mb-2">
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="text-xl font-bold text-green-800 mb-2">
                       🎮 Game Live!
                     </div>
-                    <div className="text-3xl font-bold text-purple-800">
+                    <div className="text-2xl font-bold text-purple-800">
                       Score: {score}
                     </div>
                   </div>
-                  <div className="text-purple-700">
-                    Collecting dots and avoiding collisions...
+                  
+                  {/* Actual Snake Game */}
+                  <div className="flex justify-center">
+                    <SnakeGame 
+                      isPlaying={true}
+                      isBot={false}
+                      onScoreChange={handleScoreChange}
+                      onGameOver={handleGameOver}
+                      onGameWin={handleGameWin}
+                    />
                   </div>
                 </div>
               )}
@@ -120,30 +151,44 @@ export default function BotLobby() {
               {gameOver && (
                 <div className="space-y-6">
                   <div className="p-6 bg-purple-50 border border-purple-200 rounded-lg">
-                    <div className="text-2xl font-bold text-purple-800 mb-2">
-                      🏆 Game Over!
-                    </div>
-                    <div className="text-3xl font-bold text-purple-900">
-                      Final Score: {score}
-                    </div>
+                    {gameResult?.isWinner ? (
+                      <div>
+                        <div className="text-2xl font-bold text-green-600 mb-2">
+                          🏆 You Won!
+                        </div>
+                        <div className="text-3xl font-bold text-purple-900">
+                          Final Score: {gameResult.finalScore}
+                        </div>
+                        <div className="text-green-700 mt-2">
+                          You defeated all the bots!
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="text-2xl font-bold text-purple-800 mb-2">
+                          🎮 Game Over!
+                        </div>
+                        <div className="text-3xl font-bold text-purple-900">
+                          Final Score: {gameResult?.finalScore || score}
+                        </div>
+                        <div className="text-purple-700 mt-2">
+                          {gameResult?.finalScore ? 'Time\'s up!' : 'You got eaten!'}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
                   <a
-                    href="https://warpcast.com/~/compose?text=I%20won%20a%20SlitherMatch%20Bot%20lobby%20match%20🎮%0Ahttps://slithermatch.vercel.app/bot"
+                    href={`https://warpcast.com/~/compose?text=I%20just%20scored%20${gameResult?.finalScore || score}%20points%20in%20a%20SlitherMatch%20Bot%20lobby!%20🎮%0APlay%20at%20slithermatch.xyz`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="game-button text-lg px-8 py-4 inline-block"
                   >
-                    🎉 Share your win
+                    🎉 Share your score
                   </a>
                   
                   <button 
-                    onClick={() => {
-                      setMatchStarted(false)
-                      setCountdown(3)
-                      setScore(0)
-                      setGameOver(false)
-                    }}
+                    onClick={handlePlayAgain}
                     className="game-button text-lg px-8 py-4 ml-4"
                   >
                     🔄 Play Again
@@ -175,6 +220,30 @@ export default function BotLobby() {
             <div className="rule-item">
               <span className="rule-emoji">🏋️</span>
               <span>Perfect for practice</span>
+            </div>
+            <div className="rule-item">
+              <span className="rule-emoji">🔴</span>
+              <span>Red dots = 3 points</span>
+            </div>
+            <div className="rule-item">
+              <span className="rule-emoji">🟢</span>
+              <span>Green dots = 6 points</span>
+            </div>
+            <div className="rule-item">
+              <span className="rule-emoji">🟣</span>
+              <span>Purple dots = 12 points</span>
+            </div>
+            <div className="rule-item">
+              <span className="rule-emoji">🎮</span>
+              <span>Use joystick to move</span>
+            </div>
+            <div className="rule-item">
+              <span className="rule-emoji">⏰</span>
+              <span>3 minute time limit</span>
+            </div>
+            <div className="rule-item">
+              <span className="rule-emoji">🏆</span>
+              <span>Last snake alive wins</span>
             </div>
           </div>
         </div>
