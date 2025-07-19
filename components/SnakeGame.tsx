@@ -104,6 +104,167 @@ export const SnakeGame: React.FC<GameProps> = ({
     FOOD_PURPLE: '#8b5cf6'
   }
 
+  // Eye styles for different snakes
+  const EYE_STYLES = {
+    PLAYER: 'normal',     // Normal round eyes
+    BOT1: 'angry',        // Angry slanted eyes  
+    BOT2: 'sleepy',       // Half-closed sleepy eyes
+    BOT3: 'wide',         // Wide surprised eyes
+    BOT4: 'evil',         // Evil red eyes with small pupils
+    BOT5: 'crossed'       // Cross-eyed silly eyes
+  }
+
+  // Get eye style for snake
+  const getEyeStyle = useCallback((snakeId: string) => {
+    if (snakeId === 'player') return EYE_STYLES.PLAYER
+    if (snakeId === 'bot0') return EYE_STYLES.BOT1
+    if (snakeId === 'bot1') return EYE_STYLES.BOT2
+    if (snakeId === 'bot2') return EYE_STYLES.BOT3
+    if (snakeId === 'bot3') return EYE_STYLES.BOT4
+    if (snakeId === 'bot4') return EYE_STYLES.BOT5
+    return EYE_STYLES.PLAYER
+  }, [])
+
+  // Draw snake eyes based on style
+  const drawSnakeEyes = useCallback((ctx: CanvasRenderingContext2D, snake: Snake, screenX: number, screenY: number) => {
+    const eyeStyle = getEyeStyle(snake.id)
+    const baseEyeSize = snake.radius * 0.15
+    const eyeDistance = snake.radius * 0.4
+    
+    // Calculate eye positions
+    const leftEyeX = screenX + Math.cos(snake.angle - 0.5) * eyeDistance
+    const leftEyeY = screenY + Math.sin(snake.angle - 0.5) * eyeDistance
+    const rightEyeX = screenX + Math.cos(snake.angle + 0.5) * eyeDistance
+    const rightEyeY = screenY + Math.sin(snake.angle + 0.5) * eyeDistance
+
+    switch (eyeStyle) {
+      case 'normal': // Player - normal round eyes
+        ctx.fillStyle = 'white'
+        ctx.beginPath()
+        ctx.arc(leftEyeX, leftEyeY, baseEyeSize, 0, 2 * Math.PI)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.arc(rightEyeX, rightEyeY, baseEyeSize, 0, 2 * Math.PI)
+        ctx.fill()
+        
+        // Black pupils
+        ctx.fillStyle = 'black'
+        ctx.beginPath()
+        ctx.arc(leftEyeX, leftEyeY, baseEyeSize * 0.6, 0, 2 * Math.PI)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.arc(rightEyeX, rightEyeY, baseEyeSize * 0.6, 0, 2 * Math.PI)
+        ctx.fill()
+        break
+
+      case 'angry': // Bot1 (Yellow) - angry slanted eyes
+        ctx.fillStyle = 'white'
+        ctx.beginPath()
+        ctx.ellipse(leftEyeX, leftEyeY, baseEyeSize * 1.2, baseEyeSize * 0.7, snake.angle - 0.3, 0, 2 * Math.PI)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.ellipse(rightEyeX, rightEyeY, baseEyeSize * 1.2, baseEyeSize * 0.7, snake.angle + 0.3, 0, 2 * Math.PI)
+        ctx.fill()
+        
+        // Red angry pupils
+        ctx.fillStyle = '#dc2626'
+        ctx.beginPath()
+        ctx.arc(leftEyeX, leftEyeY, baseEyeSize * 0.5, 0, 2 * Math.PI)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.arc(rightEyeX, rightEyeY, baseEyeSize * 0.5, 0, 2 * Math.PI)
+        ctx.fill()
+        break
+
+      case 'sleepy': // Bot2 (Purple) - half-closed sleepy eyes
+        ctx.fillStyle = 'white'
+        ctx.beginPath()
+        ctx.ellipse(leftEyeX, leftEyeY, baseEyeSize, baseEyeSize * 0.4, 0, 0, 2 * Math.PI)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.ellipse(rightEyeX, rightEyeY, baseEyeSize, baseEyeSize * 0.4, 0, 0, 2 * Math.PI)
+        ctx.fill()
+        
+        // Small pupils
+        ctx.fillStyle = 'black'
+        ctx.beginPath()
+        ctx.arc(leftEyeX, leftEyeY, baseEyeSize * 0.3, 0, 2 * Math.PI)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.arc(rightEyeX, rightEyeY, baseEyeSize * 0.3, 0, 2 * Math.PI)
+        ctx.fill()
+        break
+
+      case 'wide': // Bot3 (Orange) - wide surprised eyes
+        ctx.fillStyle = 'white'
+        ctx.beginPath()
+        ctx.arc(leftEyeX, leftEyeY, baseEyeSize * 1.5, 0, 2 * Math.PI)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.arc(rightEyeX, rightEyeY, baseEyeSize * 1.5, 0, 2 * Math.PI)
+        ctx.fill()
+        
+        // Large pupils
+        ctx.fillStyle = 'black'
+        ctx.beginPath()
+        ctx.arc(leftEyeX, leftEyeY, baseEyeSize * 0.8, 0, 2 * Math.PI)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.arc(rightEyeX, rightEyeY, baseEyeSize * 0.8, 0, 2 * Math.PI)
+        ctx.fill()
+        break
+
+      case 'evil': // Bot4 (Red) - evil red eyes with small pupils
+        ctx.fillStyle = '#fca5a5' // Light red
+        ctx.beginPath()
+        ctx.arc(leftEyeX, leftEyeY, baseEyeSize, 0, 2 * Math.PI)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.arc(rightEyeX, rightEyeY, baseEyeSize, 0, 2 * Math.PI)
+        ctx.fill()
+        
+        // Small dark red pupils
+        ctx.fillStyle = '#7f1d1d'
+        ctx.beginPath()
+        ctx.arc(leftEyeX, leftEyeY, baseEyeSize * 0.4, 0, 2 * Math.PI)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.arc(rightEyeX, rightEyeY, baseEyeSize * 0.4, 0, 2 * Math.PI)
+        ctx.fill()
+        break
+
+      case 'crossed': // Bot5 (Green) - cross-eyed silly eyes
+        ctx.fillStyle = 'white'
+        ctx.beginPath()
+        ctx.arc(leftEyeX, leftEyeY, baseEyeSize, 0, 2 * Math.PI)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.arc(rightEyeX, rightEyeY, baseEyeSize, 0, 2 * Math.PI)
+        ctx.fill()
+        
+        // Cross-eyed pupils (looking towards center)
+        ctx.fillStyle = 'black'
+        ctx.beginPath()
+        ctx.arc(leftEyeX + baseEyeSize * 0.3, leftEyeY, baseEyeSize * 0.6, 0, 2 * Math.PI)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.arc(rightEyeX - baseEyeSize * 0.3, rightEyeY, baseEyeSize * 0.6, 0, 2 * Math.PI)
+        ctx.fill()
+        break
+
+      default:
+        // Fallback to normal eyes
+        ctx.fillStyle = 'white'
+        ctx.beginPath()
+        ctx.arc(leftEyeX, leftEyeY, baseEyeSize, 0, 2 * Math.PI)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.arc(rightEyeX, rightEyeY, baseEyeSize, 0, 2 * Math.PI)
+        ctx.fill()
+        break
+    }
+  }, [getEyeStyle])
+
   // Generate random position in world
   const generateRandomPosition = useCallback((): Position => {
     const wallMargin = 30 // Keep away from walls
@@ -777,25 +938,7 @@ export const SnakeGame: React.FC<GameProps> = ({
           
           // Draw eyes on head
           if (index === 0) {
-            const eyeSize = snake.radius * 0.15
-            const eyeDistance = snake.radius * 0.4
-            
-            ctx.fillStyle = 'white'
-            ctx.beginPath()
-            ctx.arc(
-              screenX + Math.cos(snake.angle - 0.5) * eyeDistance,
-              screenY + Math.sin(snake.angle - 0.5) * eyeDistance,
-              eyeSize, 0, 2 * Math.PI
-            )
-            ctx.fill()
-            
-            ctx.beginPath()
-            ctx.arc(
-              screenX + Math.cos(snake.angle + 0.5) * eyeDistance,
-              screenY + Math.sin(snake.angle + 0.5) * eyeDistance,
-              eyeSize, 0, 2 * Math.PI
-            )
-            ctx.fill()
+            drawSnakeEyes(ctx, snake, screenX, screenY)
           }
         }
       })
@@ -811,7 +954,7 @@ export const SnakeGame: React.FC<GameProps> = ({
       ctx.textAlign = 'center'
       ctx.fillText('Game Over!', VIEWPORT_SIZE / 2, VIEWPORT_SIZE / 2)
     }
-  }, [snakes, food, camera, gameEnded, isPreview])
+  }, [snakes, food, camera, gameEnded, isPreview, drawSnakeEyes])
 
   // Mini-map drawing
   useEffect(() => {
