@@ -1099,7 +1099,7 @@ export const SnakeGame: React.FC<GameProps> = ({
         )}
       </div>
 
-      {/* Main Game Canvas */}
+      {/* Main Game Canvas - Keep original size */}
       <div className="canvas-container">
         <canvas
           ref={canvasRef}
@@ -1214,12 +1214,9 @@ export const SnakeGame: React.FC<GameProps> = ({
           position: relative;
           width: ${VIEWPORT_SIZE}px;
           height: ${VIEWPORT_SIZE}px;
-          border: 2px solid rgba(0, 255, 255, 0.3);
-          border-radius: 8px;
+          border: none;
+          border-radius: 0;
           overflow: hidden;
-          box-shadow: 
-            0 0 20px rgba(0, 255, 255, 0.2),
-            inset 0 0 20px rgba(0, 255, 255, 0.1);
         }
 
         .game-canvas {
@@ -1227,6 +1224,7 @@ export const SnakeGame: React.FC<GameProps> = ({
           background: #0a0a1a;
           width: 100%;
           height: 100%;
+          border: none;
         }
 
         .mini-map {
