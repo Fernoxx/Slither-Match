@@ -4,7 +4,7 @@ interface GameProps {
   isPlaying: boolean
   isBot?: boolean
   onScoreChange?: (score: number) => void
-  onGameOver?: () => void
+  onGameOver?: (score: number) => void
   onGameWin?: (finalScore: number, isWinner: boolean) => void
   isPreview?: boolean // New prop for homepage preview
 }
@@ -648,7 +648,7 @@ export const SnakeGame: React.FC<GameProps> = ({
     // Check if player is dead
     if (playerSnake?.isDead) {
       setGameEnded(true)
-      onGameOver?.()
+      onGameOver?.(playerSnake.score)
       return
     }
 

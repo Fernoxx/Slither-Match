@@ -1,363 +1,659 @@
-import { useEffect, useState } from 'react'
-import { useAccount, useConnect, useDisconnect, useReadContract, useWriteContract } from 'wagmi'
-import { parseUnits } from 'viem'
-import { slitherMatchABI } from '../lib/slitherMatchABI'
+import { useState, useCallback } from 'react'
 import { SnakeGame } from '../components/SnakeGame'
-import Link from 'next/link'
 
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`
-const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS as `0x${string}`
+// Wallet integration for Farcaster miniapps
+declare global {
+  interface Window {
+    farcaster?: {
+      isConnected: boolean
+      connect: () => Promise<{ address: string }>
+    }
+  }
+}
 
 export default function Home() {
-  const { address, isConnected } = useAccount()
-  const { connect } = useConnect()
-  const { disconnect } = useDisconnect()
-  const { writeContract: joinLobby } = useWriteContract()
-  
-  const [currentView, setCurrentView] = useState<'menu' | 'lobby' | 'game'>('menu')
-  const [currentLobby, setCurrentLobby] = useState<number | null>(null)
-  const [gameCountdown, setGameCountdown] = useState(30) // 30 seconds after 3+ players
-  const [playersInLobby, setPlayersInLobby] = useState<string[]>([])
+  const [currentView, setCurrentView] = useState<'home' | 'bot-lobby' | 'paid-lobby'>('home')
+  const [walletAddress, setWalletAddress] = useState<string | null>(null)
+  const [isConnecting, setIsConnecting] = useState(false)
+  const [players, setPlayers] = useState<string[]>([])
+  const [countdown, setCountdown] = useState<number | null>(null)
+  const [gameStarted, setGameStarted] = useState(false)
   const [gameScore, setGameScore] = useState(0)
-  const [gameResult, setGameResult] = useState<{ isWinner: boolean, finalScore: number } | null>(null)
-  const [lobbyStatus, setLobbyStatus] = useState<'waiting' | 'countdown' | 'playing'>('waiting')
+  const [gameEnded, setGameEnded] = useState(false)
+  const [isPaidLobby, setIsPaidLobby] = useState(false)
 
-  // Read lobby data when in a lobby
-  const { data: lobbyPlayers } = useReadContract({
-    address: CONTRACT_ADDRESS,
-    abi: slitherMatchABI,
-    functionName: 'getPlayers',
-    args: currentLobby ? [BigInt(currentLobby)] : undefined,
-  })
-
-  useEffect(() => {
-    if (lobbyPlayers) {
-      const players = lobbyPlayers as string[]
-      setPlayersInLobby(players)
-      
-      // Update lobby status based on player count
-      if (players.length >= 3 && lobbyStatus === 'waiting') {
-        setLobbyStatus('countdown')
-        setGameCountdown(30)
-      } else if (players.length < 3) {
-        setLobbyStatus('waiting')
-        setGameCountdown(30)
-      }
+  // Connect Farcaster wallet (only for paid lobby)
+  const connectWallet = useCallback(async () => {
+    if (currentView === 'bot-lobby') {
+      // No wallet needed for bot lobby
+      return
     }
-  }, [lobbyPlayers, lobbyStatus])
 
-  // Countdown timer for game start (only when 3+ players)
-  useEffect(() => {
-    if (lobbyStatus === 'countdown' && gameCountdown > 0) {
-      const timer = setInterval(() => {
-        setGameCountdown(prev => {
-          if (prev <= 1) {
-            setLobbyStatus('playing')
-            setCurrentView('game')
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
-      return () => clearInterval(timer)
-    }
-  }, [lobbyStatus, gameCountdown])
-
-  const handleJoinLobby = async () => {
-    // Auto-connect Farcaster wallet
-    if (!isConnected) {
-      try {
-        // For Farcaster frames, we need to handle wallet connection properly
-        if (typeof window !== 'undefined') {
-          // Check if we're in a Farcaster frame
-          const isInFarcaster = window.parent !== window
-          
-          if (isInFarcaster && window.ethereum) {
-            // Request account access in Farcaster
-            await window.ethereum.request({ method: 'eth_requestAccounts' })
-          } else {
-            // Fallback for non-Farcaster environments
-            alert('This app works best in Farcaster! Please open in Farcaster client.')
-            return
-          }
-        }
-      } catch (error) {
-        console.error('Failed to connect Farcaster wallet:', error)
-        alert('Failed to connect wallet. Please try opening this app in Farcaster.')
-        return
-      }
-    }
-    
-    // Switch to lobby view
-    setCurrentLobby(1) // Default lobby
-    setCurrentView('lobby')
-    setLobbyStatus('waiting')
-    setGameCountdown(30)
-  }
-
-  const handleConfirmJoin = async () => {
-    if (!currentLobby || !isConnected) return
-    
+    setIsConnecting(true)
     try {
-      await joinLobby({
-        address: CONTRACT_ADDRESS,
-        abi: slitherMatchABI,
-        functionName: 'joinLobby',
-        args: [BigInt(currentLobby)],
-      })
-      // Player will be added to lobby, triggering the effect above
+      // Try Farcaster SDK first
+      if (typeof window !== 'undefined' && window.farcaster) {
+        const result = await window.farcaster.connect()
+        setWalletAddress(result.address)
+      } else {
+        // Fallback to Coinbase Smart Wallet
+        const { createBaseAccountSDK } = await import('@base-org/account')
+        const sdk = createBaseAccountSDK({
+          appName: 'SlitherMatch',
+        })
+        
+        await sdk.getProvider().request({ method: 'wallet_connect' })
+        const accounts = await sdk.getProvider().request({ method: 'eth_accounts' }) as string[]
+        setWalletAddress(accounts[0])
+      }
     } catch (error) {
-      console.error('Failed to join lobby:', error)
-      alert('Failed to join lobby. Make sure you have 1 USDC and approve the transaction.')
+      console.error('Wallet connection failed:', error)
+      alert('Please connect your Farcaster wallet or Coinbase Smart Wallet to join the paid lobby')
+    } finally {
+      setIsConnecting(false)
     }
-  }
+  }, [currentView])
 
-  const handleBackToMenu = () => {
-    setCurrentView('menu')
-    setCurrentLobby(null)
-    setGameCountdown(30)
+  // Join paid lobby (requires wallet + payment)
+  const joinPaidLobby = useCallback(async () => {
+    setIsPaidLobby(true)
+    setCurrentView('paid-lobby')
+    
+    if (!walletAddress) {
+      await connectWallet()
+      if (!walletAddress) return
+    }
+
+    // Simulate adding player to lobby
+    setPlayers(prev => [...prev, walletAddress])
+    
+    // Start countdown when 3+ players
+    if (players.length >= 2) { // 2 + current = 3
+      let count = 30
+      setCountdown(count)
+      
+      const timer = setInterval(() => {
+        count--
+        setCountdown(count)
+        
+        if (count <= 0) {
+          clearInterval(timer)
+          setCountdown(null)
+          setGameStarted(true)
+        }
+      }, 1000)
+    }
+  }, [walletAddress, connectWallet, players.length])
+
+  // Join bot lobby (no wallet needed)
+  const joinBotLobby = useCallback(() => {
+    setIsPaidLobby(false)
+    setCurrentView('bot-lobby')
+    setGameStarted(true)
+  }, [])
+
+  // Handle game end
+  const handleGameEnd = useCallback((finalScore: number, isWinner: boolean) => {
+    setGameScore(finalScore)
+    setGameEnded(true)
+    
+    if (isPaidLobby && isWinner) {
+      // Share cast for paid lobby win
+      sharePaidLobbyWin(finalScore)
+    }
+  }, [isPaidLobby])
+
+  // Share paid lobby win to Farcaster
+  const sharePaidLobbyWin = useCallback((score: number) => {
+    const castText = `🐍 I just won SlitherMatch with ${score} points and earned $3! 🏆\n\nPlay now: ${window.location.origin}`
+    
+    // Try to post to Farcaster via parent frame
+    try {
+      if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: 'share_cast',
+          text: castText
+        }, '*')
+      } else {
+        // Fallback to copy to clipboard
+        navigator.clipboard.writeText(castText)
+        alert('Win message copied to clipboard! Share it on Farcaster!')
+      }
+    } catch (error) {
+      // Fallback to copy to clipboard
+      navigator.clipboard.writeText(castText)
+      alert('Win message copied to clipboard! Share it on Farcaster!')
+    }
+  }, [])
+
+  // Reset game
+  const resetGame = useCallback(() => {
+    setGameStarted(false)
+    setGameEnded(false)
     setGameScore(0)
-    setGameResult(null)
-    setLobbyStatus('waiting')
-  }
+    setPlayers([])
+    setCountdown(null)
+    setCurrentView('home')
+  }, [])
 
-  const handleGameOver = () => {
-    // Game over logic - player died
-    alert(`Game Over! You died. Final Score: ${gameScore}`)
-    setTimeout(() => {
-      setCurrentView('menu')
-    }, 2000)
-  }
-
-  const handleGameWin = (finalScore: number, isWinner: boolean) => {
-    // Game win logic - game ended (time up or last snake standing)
-    setGameResult({ isWinner, finalScore })
-    
-    if (isWinner) {
-      alert(`🎉 You Won! Final Score: ${finalScore}\n\nYou get ${playersInLobby.length} USDC!`)
-    } else {
-      alert(`Game Ended! Your Score: ${finalScore}\n\nBetter luck next time!`)
-    }
-    
-    setTimeout(() => {
-      setCurrentView('menu')
-    }, 3000)
-  }
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
-
-  if (currentView === 'menu') {
+  if (currentView === 'home') {
     return (
-      <main className="game-container">
-        <div className="menu-container">
-          {/* Title */}
-          <h1 className="game-title">SlitherMatch</h1>
-          
-          {/* Show last game result if available */}
-          {gameResult && (
-            <div className={`game-result-banner ${gameResult.isWinner ? 'winner' : 'loser'}`}>
-              {gameResult.isWinner ? (
-                <div className="result-content">
-                  🏆 You Won! Score: {gameResult.finalScore}
-                </div>
-              ) : (
-                <div className="result-content">
-                  😔 Game Over! Score: {gameResult.finalScore}
-                </div>
-              )}
-            </div>
-          )}
-          
-          {/* Join Lobby Button */}
-          <div className="menu-section">
-            <button 
-              onClick={handleJoinLobby}
-              className="join-lobby-btn"
-            >
-              <div className="btn-content">
-                <span className="btn-title">Join Lobby</span>
-                <span className="btn-subtitle">$1 entry • Farcaster only</span>
-              </div>
-            </button>
-          </div>
+      <div className="container">
+        <div className="header">
+          <h1>🐍 SlitherMatch</h1>
+          <p className="subtitle">Compete, grow, and earn crypto rewards!</p>
+        </div>
 
-          {/* Game Preview - Updated with new features */}
-          <div className="game-preview">
-            <div className="game-board-container">
-              <SnakeGame isPlaying={true} isBot={true} isPreview={true} />
-            </div>
-            
-            {/* Game Rules */}
-            <div className="preview-info">
-              <div className="game-rules-simple">
-                <div className="rule-item">💰 $1 USDC entry fee</div>
-                <div className="rule-item">🏆 Winner takes all</div>
-                <div className="rule-item">🔴 Red dots = 3 points</div>
-                <div className="rule-item">🟢 Green dots = 6 points</div>
-                <div className="rule-item">🟣 Purple dots = 12 points</div>
-              </div>
-            </div>
-          </div>
+        <div className="game-preview">
+          <SnakeGame 
+            isPlaying={true}
+            isBot={true} 
+            isPreview={true}
+            onScoreChange={() => {}}
+            onGameOver={() => {}}
+            onGameWin={() => {}}
+          />
+        </div>
 
-          {/* Bot Lobby Link */}
-          <div className="menu-section">
-            <Link href="/bot" className="bot-lobby-btn">
-              🤖 Practice vs Bots
-            </Link>
+        <div className="game-rules">
+          <h3>🎮 Game Rules</h3>
+          <div className="rules-list">
+            <div className="rule">💰 $1 USDC entry fee</div>
+            <div className="rule">🏆 Winner takes all</div>
           </div>
         </div>
-      </main>
-    )
-  }
 
-  if (currentView === 'lobby') {
-    return (
-      <main className="game-container">
-        <div className="lobby-container">
-          <button onClick={handleBackToMenu} className="back-btn">
-            ← Back
+        <div className="lobby-buttons">
+          <button onClick={joinBotLobby} className="bot-lobby-btn">
+            🤖 Play with Bots (Free)
           </button>
-          
-          <h1 className="game-title">Lobby {currentLobby}</h1>
-          
-          <div className="lobby-info">
-            <div className="entry-fee">$1 USDC Entry</div>
-            <div className="players-count">{playersInLobby.length}/5 Players</div>
-          </div>
-
-          {/* Players List */}
-          <div className="players-list">
-            <h3 className="players-list-title">Players in Lobby:</h3>
-            {playersInLobby.length > 0 ? (
-              playersInLobby.map((player, index) => (
-                <div key={index} className="player-item">
-                  <div className="player-avatar">👤</div>
-                  <div className="player-address">
-                    {player.slice(0, 6)}...{player.slice(-4)}
-                  </div>
-                  <div className="player-status">✅ Paid</div>
-                </div>
-              ))
-            ) : (
-              <div className="no-players">No players yet. Be the first to join!</div>
-            )}
-          </div>
-
-          {/* Lobby Status */}
-          <div className="lobby-status">
-            {lobbyStatus === 'waiting' && (
-              <div className="waiting-section">
-                <div className="waiting-text">
-                  Need {Math.max(0, 3 - playersInLobby.length)} more players to start
-                </div>
-                <div className="waiting-subtext">
-                  Minimum 3 players required • Maximum 5 players
-                </div>
-              </div>
-            )}
-            
-            {lobbyStatus === 'countdown' && (
-              <div className="countdown-section">
-                <div className="countdown-text">
-                  🎮 Game starting in {gameCountdown} seconds!
-                </div>
-                <div className="countdown-subtext">
-                  {5 - playersInLobby.length > 0 ? 
-                    `${5 - playersInLobby.length} more players can still join!` : 
-                    'Lobby is full!'
-                  }
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="lobby-actions">
-            {!playersInLobby.includes(address || '') ? (
-              <button onClick={handleConfirmJoin} className="confirm-join-btn">
-                💰 Pay $1 USDC & Join Lobby
-              </button>
-            ) : (
-              <div className="joined-status">
-                <div className="joined-text">✅ You're in the lobby!</div>
-                <div className="joined-subtext">
-                  {lobbyStatus === 'waiting' ? 
-                    'Waiting for more players...' : 
-                    'Get ready to play!'
-                  }
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Lobby Rules */}
-          <div className="lobby-rules">
-            <h4>🎯 How it Works:</h4>
-            <ul>
-              <li>💰 Entry fee: $1 USDC per player</li>
-              <li>👥 3-5 players per match</li>
-              <li>⏰ 30 second countdown after 3+ players</li>
-              <li>🎮 3 minute gameplay</li>
-              <li>🏆 Winner takes all USDC (minus platform fee)</li>
-            </ul>
-          </div>
+          <button onClick={joinPaidLobby} className="paid-lobby-btn">
+            💰 Join Paid Lobby ($1 USDC)
+          </button>
         </div>
-      </main>
+
+        <style jsx>{`
+          .container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+          }
+
+          .header {
+            text-align: center;
+            margin-bottom: 20px;
+          }
+
+          .header h1 {
+            font-size: 3rem;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+          }
+
+          .subtitle {
+            font-size: 1.2rem;
+            margin: 10px 0;
+            opacity: 0.9;
+          }
+
+          .game-preview {
+            width: 444px;
+            height: 444px;
+            border: none;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+            background: white;
+          }
+
+          .game-rules {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+          }
+
+          .game-rules h3 {
+            margin: 0 0 15px 0;
+            font-size: 1.3rem;
+          }
+
+          .rules-list {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+          }
+
+          .rule {
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+          }
+
+          .lobby-buttons {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+          }
+
+          .bot-lobby-btn, .paid-lobby-btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 200px;
+          }
+
+          .bot-lobby-btn {
+            background: #4ade80;
+            color: white;
+          }
+
+          .bot-lobby-btn:hover {
+            background: #22c55e;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(74, 222, 128, 0.4);
+          }
+
+          .paid-lobby-btn {
+            background: #f59e0b;
+            color: white;
+          }
+
+          .paid-lobby-btn:hover {
+            background: #d97706;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+          }
+
+          @media (max-width: 768px) {
+            .header h1 {
+              font-size: 2rem;
+            }
+            
+            .game-preview {
+              width: 300px;
+              height: 300px;
+            }
+            
+            .lobby-buttons {
+              flex-direction: column;
+              width: 100%;
+              max-width: 300px;
+            }
+          }
+        `}</style>
+      </div>
     )
   }
 
-  if (currentView === 'game') {
+  if (currentView === 'bot-lobby') {
     return (
-      <main className="game-container">
-        <div className="game-active-container">
-          <div className="game-header">
-            <h1 className="game-title small">SlitherMatch</h1>
-            <div className="game-status">
-              <span>Players: {playersInLobby.length}</span>
-              <span>•</span>
-              <span>Prize: ${playersInLobby.length} USDC</span>
+      <div className="game-container">
+        <div className="game-header">
+          <h2>🤖 Bot Lobby</h2>
+          <button onClick={resetGame} className="back-btn">← Back to Home</button>
+        </div>
+
+        <SnakeGame 
+          isPlaying={true}
+          isBot={true} 
+          isPreview={false}
+          onScoreChange={setGameScore}
+          onGameOver={(score) => {
+            setGameScore(score)
+            setGameEnded(true)
+          }}
+          onGameWin={(score) => {
+            setGameScore(score)
+            setGameEnded(true)
+          }}
+        />
+
+        {gameEnded && (
+          <div className="game-end-overlay">
+            <div className="game-end-modal">
+              <h2>🎮 Game Over!</h2>
+              <p className="final-score">Final Score: {gameScore}</p>
+              <p>Good practice! Ready for the paid lobby?</p>
+              <div className="end-buttons">
+                <button onClick={resetGame} className="play-again-btn">
+                  🔄 Play Again
+                </button>
+                <button onClick={joinPaidLobby} className="paid-lobby-btn">
+                  💰 Join Paid Lobby
+                </button>
+              </div>
             </div>
           </div>
+        )}
 
-          {/* Active Game */}
-          <div className="active-game">
-            <SnakeGame 
-              isPlaying={true} 
-              isBot={false}
-              onScoreChange={setGameScore}
-              onGameOver={handleGameOver}
-              onGameWin={handleGameWin}
-            />
-          </div>
+        <style jsx>{`
+          .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            background: #1a1a1a;
+            color: white;
+            padding: 20px;
+          }
 
-          {/* Game Info */}
-          <div className="game-info">
-            <div className="score-display">
-              <span className="score-label">Your Score:</span>
-              <span className="score-value">{gameScore}</span>
-            </div>
-            <div className="game-rules-quick">
-              <div className="rule-item">🔴 Red dots = 3 points</div>
-              <div className="rule-item">🟢 Green dots = 6 points</div>
-              <div className="rule-item">🟣 Purple dots = 12 points</div>
-            </div>
-          </div>
+          .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 500px;
+            margin-bottom: 20px;
+          }
 
-          {/* Game Controls */}
-          <div className="game-controls">
-            <div className="control-instructions">
-              Use joystick to control your snake
-            </div>
-            <button onClick={handleBackToMenu} className="leave-game-btn">
-              Leave Game
+          .game-header h2 {
+            margin: 0;
+            color: #4ade80;
+          }
+
+          .back-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+          }
+
+          .back-btn:hover {
+            background: rgba(255,255,255,0.2);
+          }
+
+          .game-end-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+          }
+
+          .game-end-modal {
+            background: #2a2a2a;
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            max-width: 400px;
+            width: 90%;
+          }
+
+          .final-score {
+            font-size: 1.5rem;
+            color: #a855f7;
+            margin: 15px 0;
+            font-weight: bold;
+          }
+
+          .end-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+          }
+
+          .play-again-btn, .paid-lobby-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+          }
+
+          .play-again-btn {
+            background: #4ade80;
+            color: white;
+          }
+
+          .play-again-btn:hover {
+            background: #22c55e;
+          }
+
+          .paid-lobby-btn {
+            background: #f59e0b;
+            color: white;
+          }
+
+          .paid-lobby-btn:hover {
+            background: #d97706;
+          }
+        `}</style>
+      </div>
+    )
+  }
+
+  if (currentView === 'paid-lobby') {
+    return (
+      <div className="game-container">
+        <div className="game-header">
+          <h2>💰 Paid Lobby</h2>
+          <button onClick={resetGame} className="back-btn">← Back to Home</button>
+        </div>
+
+        {!walletAddress && (
+          <div className="wallet-connect">
+            <p>Connect your Farcaster wallet to join</p>
+            <button onClick={connectWallet} disabled={isConnecting} className="connect-btn">
+              {isConnecting ? 'Connecting...' : '🔗 Connect Wallet'}
             </button>
           </div>
-        </div>
-      </main>
+        )}
+
+        {walletAddress && !gameStarted && (
+          <div className="lobby-status">
+            <p>Players: {players.length}/5</p>
+            {countdown && <p className="countdown">Starting in {countdown}s</p>}
+            {players.length < 3 && <p>Waiting for at least 3 players...</p>}
+          </div>
+        )}
+
+        {gameStarted && (
+          <SnakeGame 
+            isPlaying={true}
+            isBot={false} 
+            isPreview={false}
+            onScoreChange={setGameScore}
+            onGameOver={(score) => handleGameEnd(score, false)}
+            onGameWin={(score) => handleGameEnd(score, true)}
+          />
+        )}
+
+        {gameEnded && (
+          <div className="game-end-overlay">
+            <div className="game-end-modal">
+              <h2>🏆 You Won!</h2>
+              <p className="final-score">Final Score: {gameScore}</p>
+              <p>You earned $3 USDC! 🎉</p>
+              <div className="end-buttons">
+                <button onClick={() => sharePaidLobbyWin(gameScore)} className="share-btn">
+                  📱 Share Your Win
+                </button>
+                <button onClick={resetGame} className="play-again-btn">
+                  🔄 Play Again
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <style jsx>{`
+          .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            background: #1a1a1a;
+            color: white;
+            padding: 20px;
+          }
+
+          .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 500px;
+            margin-bottom: 20px;
+          }
+
+          .game-header h2 {
+            margin: 0;
+            color: #f59e0b;
+          }
+
+          .back-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+          }
+
+          .back-btn:hover {
+            background: rgba(255,255,255,0.2);
+          }
+
+          .wallet-connect {
+            text-align: center;
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+          }
+
+          .connect-btn {
+            background: #a855f7;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 15px;
+          }
+
+          .connect-btn:hover:not(:disabled) {
+            background: #9333ea;
+          }
+
+          .connect-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+
+          .lobby-status {
+            text-align: center;
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+          }
+
+          .countdown {
+            font-size: 1.5rem;
+            color: #f59e0b;
+            font-weight: bold;
+          }
+
+          .game-end-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+          }
+
+          .game-end-modal {
+            background: #2a2a2a;
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            max-width: 400px;
+            width: 90%;
+          }
+
+          .final-score {
+            font-size: 1.5rem;
+            color: #f59e0b;
+            margin: 15px 0;
+            font-weight: bold;
+          }
+
+          .end-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+          }
+
+          .share-btn, .play-again-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+          }
+
+          .share-btn {
+            background: #a855f7;
+            color: white;
+          }
+
+          .share-btn:hover {
+            background: #9333ea;
+          }
+
+          .play-again-btn {
+            background: #4ade80;
+            color: white;
+          }
+
+          .play-again-btn:hover {
+            background: #22c55e;
+          }
+        `}</style>
+      </div>
     )
   }
 
