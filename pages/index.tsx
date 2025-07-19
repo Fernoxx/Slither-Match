@@ -138,514 +138,802 @@ export default function Home() {
     setCurrentView('home')
   }, [])
 
-  // Start bot game (for bot lobby)
-  const startBotGame = useCallback(() => {
-    setGameStarted(true)
-    setGameEnded(false)
-    setGameScore(0)
-  }, [])
+  if (currentView === 'home') {
+    return (
+      <div className="homepage-container">
+        <div className="header">
+          <h1>🐍 SlitherMatch</h1>
+          <p className="subtitle">Compete, grow, and earn crypto rewards!</p>
+        </div>
 
-  // Share win (for paid lobby)
-  const shareWin = useCallback(() => {
-    const castText = `🐍 I just won SlitherMatch with ${gameScore} points! 🏆\n\nPlay now: ${window.location.origin}`
-    sharePaidLobbyWin(gameScore)
-  }, [gameScore, sharePaidLobbyWin])
-
-  return (
-    <div className="app-container">
-      {currentView === 'home' && (
-        <div className="home-page">
-          {/* Join Paid Lobby Button - First */}
-          <button
-            onClick={() => {
-              setCurrentView('paid-lobby')
-              setIsPaidLobby(true)
-            }}
-            className="primary-btn paid-lobby-btn"
-          >
-            💰 Join Paid Lobby ($5 USDC)
+        <div className="lobby-buttons">
+          <button onClick={joinPaidLobby} className="paid-lobby-btn">
+            💰 Join Paid Lobby ($1 USDC)
           </button>
-
-          {/* Play with Bots Button - Second */}
-          <button
-            onClick={() => {
-              setCurrentView('bot-lobby')
-              setIsPaidLobby(false)
-            }}
-            className="primary-btn bot-lobby-btn"
-          >
+          <button onClick={joinBotLobby} className="bot-lobby-btn">
             🤖 Play with Bots
           </button>
+        </div>
 
-          {/* Game Rules - Third */}
-          <div className="rules-section">
-            <h3>🎮 Game Rules</h3>
-            <ul>
-              <li>🐍 Control your snake using the joystick</li>
-              <li>🍎 Eat food to grow larger and gain points</li>
-              <li>💥 Avoid hitting other snakes and walls</li>
-              <li>🏆 Survive 3 minutes to win the prize pool!</li>
-            </ul>
+        <div className="game-rules">
+          <div className="rules-header">
+            <span className="rules-icon">🎮</span>
+            <span>Game Rules</span>
           </div>
-
-          {/* Live Game Preview - Fourth */}
-          <div className="preview-section">
-            <h3>🎯 Live Game Preview</h3>
-            <div className="preview-container">
-              <SnakeGame 
-                isPlaying={true}
-                isBot={true}
-                isPreview={true}
-                isPaidLobby={false}
-              />
+          <div className="rules-list">
+            <div className="rule">
+              <span className="rule-icon">💰</span>
+              <span>$1 USDC entry fee</span>
+            </div>
+            <div className="rule">
+              <span className="rule-icon">🏆</span>
+              <span>Winner takes all</span>
             </div>
           </div>
         </div>
-      )}
 
-      {currentView === 'bot-lobby' && (
-        <div className="lobby-page">
-          <h2 className="lobby-title">🤖 Bot Lobby</h2>
-          
-          {!gameStarted ? (
-            <div className="lobby-content">
-              <div className="lobby-info">
-                <p className="lobby-desc">Practice with AI opponents!</p>
-                <p className="player-count">Players: 10 (You + 9 Bots)</p>
-              </div>
-              
-              <button 
-                onClick={startBotGame}
-                className="start-btn"
-              >
-                🚀 Start Game
-              </button>
-              
-              <button 
-                onClick={() => setCurrentView('home')}
-                className="back-btn"
-              >
-                ← Back to Home
-              </button>
-            </div>
-          ) : gameEnded ? (
-            <div className="game-over">
-              <h3 className="final-score">Game Over!</h3>
-              <p className="score-text">Final Score: {gameScore}</p>
-              <button 
-                onClick={() => {
-                  setGameStarted(false)
-                  setGameEnded(false)
-                  setGameScore(0)
-                }}
-                className="play-again-btn"
-              >
-                🔄 Play Again
-              </button>
-              <button 
-                onClick={() => setCurrentView('home')}
-                className="back-btn"
-              >
-                ← Back to Home
-              </button>
-            </div>
-          ) : (
-            <div className="game-container">
-              <SnakeGame 
-                isPlaying={gameStarted}
-                isBot={false}
-                onScoreChange={setGameScore}
-                onGameOver={(score) => {
-                  setGameScore(score)
-                  setGameEnded(true)
-                }}
-                isPaidLobby={false}
-              />
-            </div>
-          )}
+        <div className="game-preview">
+          <SnakeGame 
+            isPlaying={true}
+            isBot={true} 
+            isPreview={true}
+            isPaidLobby={false}
+            onScoreChange={() => {}}
+            onGameOver={() => {}}
+            onGameWin={() => {}}
+          />
         </div>
-      )}
 
-      {currentView === 'paid-lobby' && (
-        <div className="lobby-page">
-          <h2 className="lobby-title">💰 Paid Lobby</h2>
-          
-          {!walletAddress ? (
-            <div className="wallet-connect">
-              <p className="connect-desc">Connect your wallet to join the paid lobby!</p>
-              <button 
-                onClick={connectWallet}
-                disabled={isConnecting}
-                className="connect-btn"
-              >
-                {isConnecting ? '🔄 Connecting...' : '🔗 Connect Wallet'}
-              </button>
-              <button 
-                onClick={() => setCurrentView('home')}
-                className="back-btn"
-              >
-                ← Back to Home
-              </button>
-            </div>
-          ) : !gameStarted ? (
-            <div className="lobby-content">
-              <div className="lobby-info">
-                <p className="lobby-desc">Entry Fee: $5 USDC • Winner takes 80% of pool!</p>
-                <p className="player-count">Players: {players.length}/5</p>
-                <p className="wallet-info">Wallet: {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}</p>
-              </div>
-              
-              {countdown !== null ? (
-                <div className="countdown">
-                  <h3 className="countdown-text">Game starts in {countdown}s!</h3>
-                </div>
-              ) : players.length < 5 ? (
-                <div className="waiting">
-                  <p className="waiting-text">Waiting for more players...</p>
-                </div>
-              ) : null}
-              
-              <button 
-                onClick={() => setCurrentView('home')}
-                className="back-btn"
-              >
-                ← Back to Home
-              </button>
-            </div>
-          ) : gameEnded ? (
-            <div className="game-over">
-              <h3 className="final-score">
-                {gameScore > 50 ? '🎉 You Won!' : '💀 Game Over'}
-              </h3>
-              <p className="score-text">Final Score: {gameScore}</p>
-              {gameScore > 50 && (
-                <button 
-                  onClick={shareWin}
-                  className="share-btn"
-                >
-                  📤 Share Victory on Farcaster
-                </button>
-              )}
-              <button 
-                onClick={() => setCurrentView('home')}
-                className="back-btn"
-              >
-                ← Back to Home
-              </button>
-            </div>
-          ) : (
-            <div className="game-container">
-              <SnakeGame 
-                isPlaying={gameStarted}
-                isBot={false}
-                onScoreChange={setGameScore}
-                onGameOver={(score) => {
-                  setGameScore(score)
-                  setGameEnded(true)
-                }}
-                onGameWin={(finalScore, isWinner) => {
-                  setGameScore(finalScore)
-                  setGameEnded(true)
-                }}
-                isPaidLobby={true}
-              />
-            </div>
-          )}
-        </div>
-      )}
-
-      <style jsx>{`
-        .app-container {
-          min-height: 100vh;
-          background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          position: relative;
-          overflow-x: hidden;
-        }
-
-        .app-container::before {
-          content: '';
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-image: 
-            linear-gradient(45deg, transparent 25%, rgba(138, 43, 226, 0.1) 25%, rgba(138, 43, 226, 0.1) 50%, transparent 50%),
-            linear-gradient(-45deg, transparent 25%, rgba(138, 43, 226, 0.1) 25%, rgba(138, 43, 226, 0.1) 50%, transparent 50%);
-          background-size: 60px 60px;
-          animation: backgroundMove 20s linear infinite;
-          pointer-events: none;
-          z-index: 0;
-        }
-
-        .home-page, .lobby-page {
-          position: relative;
-          z-index: 1;
-          padding: 40px 20px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          min-height: 100vh;
-          justify-content: center;
-        }
-
-        .primary-btn {
-          background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(0, 136, 255, 0.2));
-          border: 3px solid #00ffff;
-          color: #00ffff;
-          padding: 18px 36px;
-          border-radius: 15px;
-          font-size: 1.3rem;
-          font-weight: bold;
-          cursor: pointer;
-          margin: 15px;
-          transition: all 0.3s ease;
-          text-shadow: 0 0 15px rgba(0, 255, 255, 0.8);
-          box-shadow: 
-            0 0 25px rgba(0, 255, 255, 0.4),
-            inset 0 0 15px rgba(0, 255, 255, 0.1);
-          width: 280px;
-        }
-
-        .primary-btn:hover {
-          transform: translateY(-2px) scale(1.02);
-          box-shadow: 
-            0 8px 30px rgba(0, 255, 255, 0.6),
-            inset 0 0 20px rgba(0, 255, 255, 0.2);
-          text-shadow: 0 0 20px rgba(0, 255, 255, 1);
-        }
-
-        .paid-lobby-btn {
-          background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.2));
-          border-color: #ffd700;
-          color: #ffd700;
-          text-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
-          box-shadow: 
-            0 0 25px rgba(255, 215, 0, 0.4),
-            inset 0 0 15px rgba(255, 215, 0, 0.1);
-        }
-
-        .paid-lobby-btn:hover {
-          box-shadow: 
-            0 8px 30px rgba(255, 215, 0, 0.6),
-            inset 0 0 20px rgba(255, 215, 0, 0.2);
-          text-shadow: 0 0 20px rgba(255, 215, 0, 1);
-        }
-
-        .rules-section {
-          background: linear-gradient(135deg, rgba(138, 43, 226, 0.2), rgba(75, 0, 130, 0.2));
-          border: 2px solid #8a2be2;
-          border-radius: 15px;
-          padding: 25px;
-          margin: 20px;
-          max-width: 500px;
-          text-align: left;
-          box-shadow: 
-            0 0 25px rgba(138, 43, 226, 0.4),
-            inset 0 0 15px rgba(138, 43, 226, 0.1);
-        }
-
-        .rules-section h3 {
-          color: #8a2be2;
-          font-size: 1.4rem;
-          margin-bottom: 15px;
-          text-shadow: 0 0 15px rgba(138, 43, 226, 0.8);
-          text-align: center;
-        }
-
-        .rules-section ul {
-          list-style: none;
-          padding: 0;
-          margin: 0;
-        }
-
-        .rules-section li {
-          color: #ffffff;
-          margin: 10px 0;
-          font-size: 1rem;
-          text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-        }
-
-        .preview-section {
-          margin-top: 30px;
-          text-align: center;
-        }
-
-        .preview-section h3 {
-          color: #00ff88;
-          font-size: 1.4rem;
-          margin-bottom: 20px;
-          text-shadow: 0 0 15px rgba(0, 255, 136, 0.8);
-        }
-
-        .preview-container {
-          border: 3px solid rgba(0, 255, 255, 0.6);
-          border-radius: 15px;
-          overflow: hidden;
-          box-shadow: 
-            0 0 30px rgba(0, 255, 255, 0.4),
-            inset 0 0 20px rgba(0, 255, 255, 0.1);
-        }
-
-        .lobby-title {
-          color: #00ffff;
-          font-size: 2.5rem;
-          font-weight: bold;
-          text-shadow: 0 0 25px rgba(0, 255, 255, 0.8);
-          margin-bottom: 30px;
-          animation: glow 3s ease-in-out infinite alternate;
-        }
-
-        .lobby-content, .wallet-connect, .game-over {
-          background: linear-gradient(135deg, rgba(138, 43, 226, 0.2), rgba(75, 0, 130, 0.2));
-          border: 2px solid #8a2be2;
-          border-radius: 15px;
-          padding: 30px;
-          margin: 20px;
-          text-align: center;
-          box-shadow: 
-            0 0 25px rgba(138, 43, 226, 0.4),
-            inset 0 0 15px rgba(138, 43, 226, 0.1);
-        }
-
-        .lobby-desc, .connect-desc {
-          color: #ffffff;
-          font-size: 1.2rem;
-          margin-bottom: 15px;
-          text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-        }
-
-        .player-count, .wallet-info {
-          color: #00ff88;
-          font-size: 1.1rem;
-          font-weight: bold;
-          margin: 10px 0;
-          text-shadow: 0 0 15px rgba(0, 255, 136, 0.8);
-        }
-
-        .start-btn, .connect-btn, .share-btn, .play-again-btn {
-          background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 200, 100, 0.2));
-          border: 3px solid #00ff88;
-          color: #00ff88;
-          padding: 15px 30px;
-          border-radius: 12px;
-          font-size: 1.2rem;
-          font-weight: bold;
-          cursor: pointer;
-          margin: 15px;
-          transition: all 0.3s ease;
-          text-shadow: 0 0 15px rgba(0, 255, 136, 0.8);
-          box-shadow: 
-            0 0 25px rgba(0, 255, 136, 0.4),
-            inset 0 0 15px rgba(0, 255, 136, 0.1);
-        }
-
-        .start-btn:hover, .connect-btn:hover, .share-btn:hover, .play-again-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 
-            0 8px 30px rgba(0, 255, 136, 0.6),
-            inset 0 0 20px rgba(0, 255, 136, 0.2);
-        }
-
-        .back-btn {
-          background: linear-gradient(135deg, rgba(255, 100, 100, 0.2), rgba(200, 50, 50, 0.2));
-          border: 2px solid #ff6464;
-          color: #ff6464;
-          padding: 12px 24px;
-          border-radius: 10px;
-          font-size: 1rem;
-          cursor: pointer;
-          margin: 10px;
-          transition: all 0.3s ease;
-          text-shadow: 0 0 10px rgba(255, 100, 100, 0.8);
-          box-shadow: 
-            0 0 20px rgba(255, 100, 100, 0.3),
-            inset 0 0 10px rgba(255, 100, 100, 0.1);
-        }
-
-        .back-btn:hover {
-          transform: translateY(-1px);
-          box-shadow: 
-            0 6px 25px rgba(255, 100, 100, 0.5),
-            inset 0 0 15px rgba(255, 100, 100, 0.2);
-        }
-
-        .countdown, .waiting {
-          margin: 20px 0;
-        }
-
-        .countdown-text, .waiting-text {
-          color: #ffd700;
-          font-size: 1.5rem;
-          font-weight: bold;
-          text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
-          animation: pulse 1s ease-in-out infinite;
-        }
-
-        .final-score {
-          color: #00ff88;
-          font-size: 2rem;
-          font-weight: bold;
-          text-shadow: 0 0 25px rgba(0, 255, 136, 0.8);
-          margin-bottom: 15px;
-        }
-
-        .score-text {
-          color: #00ffff;
-          font-size: 1.3rem;
-          font-weight: bold;
-          text-shadow: 0 0 15px rgba(0, 255, 255, 0.8);
-          margin-bottom: 20px;
-        }
-
-        .game-container {
-          width: 100%;
-          display: flex;
-          justify-content: center;
-        }
-
-        @keyframes backgroundMove {
-          0% { transform: translateX(0) translateY(0); }
-          100% { transform: translateX(-60px) translateY(-60px); }
-        }
-
-        @keyframes glow {
-          from { text-shadow: 0 0 25px rgba(0, 255, 255, 0.8); }
-          to { text-shadow: 0 0 35px rgba(0, 255, 255, 1); }
-        }
-
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.05); }
-        }
-
-        @media (max-width: 768px) {
-          .home-page, .lobby-page {
-            padding: 20px 10px;
+        <style jsx>{`
+          .homepage-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
           }
 
-          .primary-btn {
-            width: 250px;
+          .homepage-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+              radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.2) 0%, transparent 50%),
+              radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.2) 0%, transparent 50%),
+              radial-gradient(circle at 40% 80%, rgba(99, 102, 241, 0.2) 0%, transparent 50%);
+            pointer-events: none;
+          }
+
+          .header {
+            text-align: center;
+            margin-bottom: 40px;
+            z-index: 1;
+          }
+
+          .header h1 {
+            font-size: 3rem;
+            margin: 0;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.5);
+            background: linear-gradient(45deg, #ffffff, #e0e7ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+          }
+
+          .subtitle {
+            font-size: 1.2rem;
+            margin: 15px 0 0 0;
+            opacity: 0.9;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+          }
+
+          .lobby-buttons {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 40px;
+            z-index: 1;
+          }
+
+          .bot-lobby-btn, .paid-lobby-btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 16px;
             font-size: 1.1rem;
-            padding: 15px 25px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 200px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
           }
 
-          .lobby-title {
+          .paid-lobby-btn {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            border: 2px solid rgba(245, 158, 11, 0.3);
+            box-shadow: 
+              0 8px 25px rgba(245, 158, 11, 0.3),
+              0 0 20px rgba(245, 158, 11, 0.2),
+              inset 0 1px 0 rgba(255, 255, 255, 0.2);
+          }
+
+          .paid-lobby-btn:hover {
+            background: linear-gradient(135deg, #d97706, #b45309);
+            transform: translateY(-3px);
+            box-shadow: 
+              0 12px 35px rgba(245, 158, 11, 0.4),
+              0 0 30px rgba(245, 158, 11, 0.3),
+              inset 0 1px 0 rgba(255, 255, 255, 0.3);
+          }
+
+          .bot-lobby-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: 2px solid rgba(16, 185, 129, 0.3);
+            box-shadow: 
+              0 8px 25px rgba(16, 185, 129, 0.3),
+              0 0 20px rgba(16, 185, 129, 0.2),
+              inset 0 1px 0 rgba(255, 255, 255, 0.2);
+          }
+
+          .bot-lobby-btn:hover {
+            background: linear-gradient(135deg, #059669, #047857);
+            transform: translateY(-3px);
+            box-shadow: 
+              0 12px 35px rgba(16, 185, 129, 0.4),
+              0 0 30px rgba(16, 185, 129, 0.3),
+              inset 0 1px 0 rgba(255, 255, 255, 0.3);
+          }
+
+          .game-rules {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 40px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 
+              0 8px 32px rgba(0, 0, 0, 0.1),
+              0 0 20px rgba(255, 255, 255, 0.1);
+            z-index: 1;
+          }
+
+          .rules-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #e0e7ff;
+          }
+
+          .rules-icon {
+            font-size: 1.5rem;
+          }
+
+          .rules-list {
+            display: flex;
+            gap: 25px;
+            justify-content: center;
+            flex-wrap: wrap;
+          }
+
+          .rule {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-size: 0.95rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+          }
+
+          .rule-icon {
+            font-size: 1.1rem;
+          }
+
+          .game-preview {
+            width: 444px;
+            height: 444px;
+            border: none;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 
+              0 20px 60px rgba(0, 0, 0, 0.3),
+              0 0 40px rgba(139, 92, 246, 0.2),
+              inset 0 0 20px rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            z-index: 1;
+          }
+
+          @media (max-width: 768px) {
+            .header h1 {
+              font-size: 2.5rem;
+            }
+            
+            .game-preview {
+              width: 320px;
+              height: 320px;
+            }
+            
+            .lobby-buttons {
+              flex-direction: column;
+              width: 100%;
+              max-width: 300px;
+            }
+
+            .rules-list {
+              flex-direction: column;
+              gap: 15px;
+            }
+          }
+        `}</style>
+      </div>
+    )
+  }
+
+  if (currentView === 'bot-lobby') {
+    return (
+      <div className="game-container">
+        <div className="game-header">
+          <h2>🤖 Bot Lobby</h2>
+          <button onClick={resetGame} className="back-btn">← Back to Home</button>
+        </div>
+
+        {!gameStarted && (
+          <div className="lobby-status">
+            <h3>🎮 Ready to Play?</h3>
+            <p>Practice your skills against AI opponents!</p>
+            <button onClick={() => setGameStarted(true)} className="start-btn">
+              🚀 Start Game
+            </button>
+          </div>
+        )}
+
+        {gameStarted && (
+          <SnakeGame 
+            isPlaying={true}
+            isBot={false}
+            isPreview={false}
+            isPaidLobby={false}
+            onScoreChange={setGameScore}
+            onGameOver={(score) => {
+              setGameScore(score)
+              setGameEnded(true)
+            }}
+            onGameWin={(score) => {
+              setGameScore(score)
+              setGameEnded(true)
+            }}
+          />
+        )}
+
+        {gameEnded && (
+          <div className="game-end-overlay">
+            <div className="game-end-modal">
+              <h2>🎮 Game Over!</h2>
+              <p className="final-score">Final Score: {gameScore}</p>
+              <p>Good practice! Ready for the paid lobby?</p>
+              <div className="end-buttons">
+                <button onClick={resetGame} className="play-again-btn">
+                  🔄 Play Again
+                </button>
+                <button onClick={joinPaidLobby} className="paid-lobby-btn">
+                  💰 Join Paid Lobby
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <style jsx>{`
+          .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+            color: white;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+          }
+
+          .game-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+              radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.2) 0%, transparent 50%),
+              radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.2) 0%, transparent 50%),
+              radial-gradient(circle at 40% 80%, rgba(99, 102, 241, 0.2) 0%, transparent 50%);
+            pointer-events: none;
+          }
+
+          .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 500px;
+            margin-bottom: 30px;
+            z-index: 1;
+          }
+
+          .game-header h2 {
+            margin: 0;
+            color: #ffffff;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+            font-size: 1.8rem;
+          }
+
+          .back-btn {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+          }
+
+          .back-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+          }
+
+          .lobby-status {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            padding: 40px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            z-index: 1;
+          }
+
+          .lobby-status h3 {
+            margin: 0 0 15px 0;
+            font-size: 1.5rem;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+          }
+
+          .lobby-status p {
+            margin: 0 0 25px 0;
+            opacity: 0.9;
+          }
+
+          .start-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.1rem;
+            box-shadow: 
+              0 8px 25px rgba(16, 185, 129, 0.3),
+              0 0 20px rgba(16, 185, 129, 0.2);
+          }
+
+          .start-btn:hover {
+            background: linear-gradient(135deg, #059669, #047857);
+            transform: translateY(-3px);
+            box-shadow: 
+              0 12px 35px rgba(16, 185, 129, 0.4),
+              0 0 30px rgba(16, 185, 129, 0.3);
+          }
+
+          .game-end-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+          }
+
+          .game-end-modal {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+          }
+
+          .final-score {
+            font-size: 1.5rem;
+            color: #fbbf24;
+            margin: 15px 0;
+            font-weight: bold;
+            text-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
+          }
+
+          .end-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+            justify-content: center;
+            flex-wrap: wrap;
+          }
+
+          .play-again-btn, .paid-lobby-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+          }
+
+          .play-again-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+          }
+
+          .play-again-btn:hover {
+            background: linear-gradient(135deg, #059669, #047857);
+            transform: translateY(-2px);
+          }
+
+          .paid-lobby-btn {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+          }
+
+          .paid-lobby-btn:hover {
+            background: linear-gradient(135deg, #d97706, #b45309);
+            transform: translateY(-2px);
+          }
+        `}</style>
+      </div>
+    )
+  }
+
+  if (currentView === 'paid-lobby') {
+    return (
+      <div className="game-container">
+        <div className="game-header">
+          <h2>💰 Paid Lobby</h2>
+          <button onClick={resetGame} className="back-btn">← Back to Home</button>
+        </div>
+
+        {!walletAddress ? (
+          <div className="wallet-connect">
+            <p className="connect-desc">Connect your wallet to join the paid lobby!</p>
+            <button 
+              onClick={connectWallet}
+              disabled={isConnecting}
+              className="connect-btn"
+            >
+              {isConnecting ? '🔄 Connecting...' : '🔗 Connect Wallet'}
+            </button>
+          </div>
+        ) : !gameStarted ? (
+          <div className="lobby-content">
+            <div className="lobby-info">
+              <p className="lobby-desc">Entry Fee: $5 USDC • Winner takes 80% of pool!</p>
+              <p className="player-count">Players: {players.length}/5</p>
+              <p className="wallet-info">Wallet: {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}</p>
+            </div>
+            
+            {countdown !== null ? (
+              <div className="countdown">
+                <h3 className="countdown-text">Game starts in {countdown}s!</h3>
+              </div>
+            ) : players.length < 5 ? (
+              <div className="waiting">
+                <p className="waiting-text">Waiting for more players...</p>
+              </div>
+            ) : null}
+            
+            <button 
+              onClick={() => setCurrentView('home')}
+              className="back-btn"
+            >
+              ← Back to Home
+            </button>
+          </div>
+        ) : gameEnded ? (
+          <div className="game-over">
+            <h3 className="final-score">
+              {gameScore > 50 ? '🎉 You Won!' : '💀 Game Over'}
+            </h3>
+            <p className="score-text">Final Score: {gameScore}</p>
+            {gameScore > 50 && (
+              <button 
+                onClick={shareWin}
+                className="share-btn"
+              >
+                📤 Share Victory on Farcaster
+              </button>
+            )}
+            <button 
+              onClick={() => setCurrentView('home')}
+              className="back-btn"
+            >
+              ← Back to Home
+            </button>
+          </div>
+        ) : (
+          <div className="game-container">
+            <SnakeGame 
+              isPlaying={gameStarted}
+              isBot={false}
+              onScoreChange={setGameScore}
+              onGameOver={(score) => {
+                setGameScore(score)
+                setGameEnded(true)
+              }}
+              onGameWin={(finalScore, isWinner) => {
+                setGameScore(finalScore)
+                setGameEnded(true)
+              }}
+              isPaidLobby={true}
+            />
+          </div>
+        )}
+
+        <style jsx>{`
+          .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+            color: white;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+          }
+
+          .game-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+              radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.2) 0%, transparent 50%),
+              radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.2) 0%, transparent 50%),
+              radial-gradient(circle at 40% 80%, rgba(99, 102, 241, 0.2) 0%, transparent 50%);
+            pointer-events: none;
+          }
+
+          .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 500px;
+            margin-bottom: 30px;
+            z-index: 1;
+          }
+
+          .game-header h2 {
+            margin: 0;
+            color: #ffffff;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+            font-size: 1.8rem;
+          }
+
+          .back-btn {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+          }
+
+          .back-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+          }
+
+          .wallet-connect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            z-index: 1;
+          }
+
+          .connect-desc {
+            color: #ffffff;
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+          }
+
+          .connect-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.1rem;
+            box-shadow: 
+              0 8px 25px rgba(16, 185, 129, 0.3),
+              0 0 20px rgba(16, 185, 129, 0.2);
+          }
+
+          .connect-btn:hover {
+            background: linear-gradient(135deg, #059669, #047857);
+            transform: translateY(-3px);
+            box-shadow: 
+              0 12px 35px rgba(16, 185, 129, 0.4),
+              0 0 30px rgba(16, 185, 129, 0.3);
+          }
+
+          .lobby-content {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            z-index: 1;
+          }
+
+          .lobby-info {
+            text-align: center;
+          }
+
+          .lobby-desc {
+            color: #ffffff;
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+          }
+
+          .player-count, .wallet-info {
+            color: #00ff88;
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin: 10px 0;
+            text-shadow: 0 0 15px rgba(0, 255, 136, 0.8);
+          }
+
+          .countdown, .waiting {
+            margin: 20px 0;
+          }
+
+          .countdown-text, .waiting-text {
+            color: #ffd700;
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+            animation: pulse 1s ease-in-out infinite;
+          }
+
+          .game-over {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            z-index: 1;
+          }
+
+          .final-score {
+            color: #00ff88;
             font-size: 2rem;
+            font-weight: bold;
+            text-shadow: 0 0 25px rgba(0, 255, 136, 0.8);
+            margin-bottom: 15px;
           }
 
-          .rules-section {
-            max-width: 90%;
-            padding: 20px;
+          .score-text {
+            color: #00ffff;
+            font-size: 1.3rem;
+            font-weight: bold;
+            text-shadow: 0 0 15px rgba(0, 255, 255, 0.8);
+            margin-bottom: 20px;
           }
 
-          .lobby-content, .wallet-connect, .game-over {
-            padding: 20px;
-            margin: 10px;
+          .game-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
           }
-        }
-      `}</style>
-    </div>
-  )
+
+          .game-container > div {
+            width: 100%;
+            max-width: 500px;
+          }
+
+          @keyframes backgroundMove {
+            0% { transform: translateX(0) translateY(0); }
+            100% { transform: translateX(-60px) translateY(-60px); }
+          }
+
+          @keyframes glow {
+            from { text-shadow: 0 0 25px rgba(0, 255, 255, 0.8); }
+            to { text-shadow: 0 0 35px rgba(0, 255, 255, 1); }
+          }
+
+          @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+          }
+
+          @media (max-width: 768px) {
+            .game-header {
+              flex-direction: column;
+              gap: 10px;
+            }
+
+            .game-header h2 {
+              font-size: 1.5rem;
+            }
+
+            .wallet-connect, .lobby-content, .game-over {
+              padding: 20px;
+              margin: 10px;
+            }
+
+            .connect-btn {
+              width: 100%;
+              max-width: 300px;
+            }
+          }
+        `}</style>
+      </div>
+    )
+  }
 }
