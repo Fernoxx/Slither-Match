@@ -89,7 +89,9 @@ export default function Home() {
   const joinBotLobby = useCallback(() => {
     setIsPaidLobby(false)
     setCurrentView('bot-lobby')
-    setGameStarted(true)
+    setGameStarted(false) // Show start button first
+    setGameEnded(false)
+    setGameScore(0)
   }, [])
 
   // Handle game end
@@ -144,15 +146,13 @@ export default function Home() {
           <p className="subtitle">Compete, grow, and earn crypto rewards!</p>
         </div>
 
-        <div className="game-preview">
-          <SnakeGame 
-            isPlaying={true}
-            isBot={true} 
-            isPreview={true}
-            onScoreChange={() => {}}
-            onGameOver={() => {}}
-            onGameWin={() => {}}
-          />
+        <div className="lobby-buttons">
+          <button onClick={joinPaidLobby} className="paid-lobby-btn">
+            💰 Join Paid Lobby ($1 USDC)
+          </button>
+          <button onClick={joinBotLobby} className="bot-lobby-btn">
+            🤖 Play with Bots
+          </button>
         </div>
 
         <div className="game-rules">
@@ -163,13 +163,15 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="lobby-buttons">
-          <button onClick={joinBotLobby} className="bot-lobby-btn">
-            🤖 Play with Bots (Free)
-          </button>
-          <button onClick={joinPaidLobby} className="paid-lobby-btn">
-            💰 Join Paid Lobby ($1 USDC)
-          </button>
+        <div className="game-preview">
+          <SnakeGame 
+            isPlaying={true}
+            isBot={true} 
+            isPreview={true}
+            onScoreChange={() => {}}
+            onGameOver={() => {}}
+            onGameWin={() => {}}
+          />
         </div>
 
         <style jsx>{`
@@ -187,7 +189,7 @@ export default function Home() {
 
           .header {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
           }
 
           .header h1 {
@@ -202,15 +204,45 @@ export default function Home() {
             opacity: 0.9;
           }
 
-          .game-preview {
-            width: 444px;
-            height: 444px;
+          .lobby-buttons {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 30px;
+          }
+
+          .bot-lobby-btn, .paid-lobby-btn {
+            padding: 15px 30px;
             border: none;
             border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            margin-bottom: 20px;
-            background: white;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 200px;
+          }
+
+          .paid-lobby-btn {
+            background: #f59e0b;
+            color: white;
+          }
+
+          .paid-lobby-btn:hover {
+            background: #d97706;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+          }
+
+          .bot-lobby-btn {
+            background: #4ade80;
+            color: white;
+          }
+
+          .bot-lobby-btn:hover {
+            background: #22c55e;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(74, 222, 128, 0.4);
           }
 
           .game-rules {
@@ -242,44 +274,14 @@ export default function Home() {
             font-size: 0.9rem;
           }
 
-          .lobby-buttons {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-            justify-content: center;
-          }
-
-          .bot-lobby-btn, .paid-lobby-btn {
-            padding: 15px 30px;
+          .game-preview {
+            width: 444px;
+            height: 444px;
             border: none;
             border-radius: 12px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            min-width: 200px;
-          }
-
-          .bot-lobby-btn {
-            background: #4ade80;
-            color: white;
-          }
-
-          .bot-lobby-btn:hover {
-            background: #22c55e;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(74, 222, 128, 0.4);
-          }
-
-          .paid-lobby-btn {
-            background: #f59e0b;
-            color: white;
-          }
-
-          .paid-lobby-btn:hover {
-            background: #d97706;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            background: white;
           }
 
           @media (max-width: 768px) {
@@ -311,20 +313,31 @@ export default function Home() {
           <button onClick={resetGame} className="back-btn">← Back to Home</button>
         </div>
 
-        <SnakeGame 
-          isPlaying={true}
-          isBot={true} 
-          isPreview={false}
-          onScoreChange={setGameScore}
-          onGameOver={(score) => {
-            setGameScore(score)
-            setGameEnded(true)
-          }}
-          onGameWin={(score) => {
-            setGameScore(score)
-            setGameEnded(true)
-          }}
-        />
+        {!gameStarted && (
+          <div className="lobby-status">
+            <p>Starting bot game...</p>
+            <button onClick={() => setGameStarted(true)} className="start-btn">
+              🎮 Start Game
+            </button>
+          </div>
+        )}
+
+        {gameStarted && (
+          <SnakeGame 
+            isPlaying={true}
+            isBot={false}
+            isPreview={false}
+            onScoreChange={setGameScore}
+            onGameOver={(score) => {
+              setGameScore(score)
+              setGameEnded(true)
+            }}
+            onGameWin={(score) => {
+              setGameScore(score)
+              setGameEnded(true)
+            }}
+          />
+        )}
 
         {gameEnded && (
           <div className="game-end-overlay">
@@ -381,6 +394,33 @@ export default function Home() {
 
           .back-btn:hover {
             background: rgba(255,255,255,0.2);
+          }
+
+          .lobby-status {
+            text-align: center;
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+          }
+
+          .start-btn {
+            background: #4ade80;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 15px;
+            font-size: 1.1rem;
+          }
+
+          .start-btn:hover {
+            background: #22c55e;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(74, 222, 128, 0.4);
           }
 
           .game-end-overlay {
