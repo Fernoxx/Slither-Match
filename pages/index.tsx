@@ -138,567 +138,514 @@ export default function Home() {
     setCurrentView('home')
   }, [])
 
-  if (currentView === 'home') {
-    return (
-      <div className="container">
-        <div className="header">
-          <h1>🐍 SlitherMatch</h1>
-          <p className="subtitle">Compete, grow, and earn crypto rewards!</p>
-        </div>
+  // Start bot game (for bot lobby)
+  const startBotGame = useCallback(() => {
+    setGameStarted(true)
+    setGameEnded(false)
+    setGameScore(0)
+  }, [])
 
-        <div className="lobby-buttons">
-          <button onClick={joinPaidLobby} className="paid-lobby-btn">
-            💰 Join Paid Lobby ($1 USDC)
+  // Share win (for paid lobby)
+  const shareWin = useCallback(() => {
+    const castText = `🐍 I just won SlitherMatch with ${gameScore} points! 🏆\n\nPlay now: ${window.location.origin}`
+    sharePaidLobbyWin(gameScore)
+  }, [gameScore, sharePaidLobbyWin])
+
+  return (
+    <div className="app-container">
+      {currentView === 'home' && (
+        <div className="home-page">
+          {/* Join Paid Lobby Button - First */}
+          <button
+            onClick={() => {
+              setCurrentView('paid-lobby')
+              setIsPaidLobby(true)
+            }}
+            className="primary-btn paid-lobby-btn"
+          >
+            💰 Join Paid Lobby ($5 USDC)
           </button>
-          <button onClick={joinBotLobby} className="bot-lobby-btn">
+
+          {/* Play with Bots Button - Second */}
+          <button
+            onClick={() => {
+              setCurrentView('bot-lobby')
+              setIsPaidLobby(false)
+            }}
+            className="primary-btn bot-lobby-btn"
+          >
             🤖 Play with Bots
           </button>
-        </div>
 
-        <div className="game-rules">
-          <h3>🎮 Game Rules</h3>
-          <div className="rules-list">
-            <div className="rule">💰 $1 USDC entry fee</div>
-            <div className="rule">🏆 Winner takes all</div>
+          {/* Game Rules - Third */}
+          <div className="rules-section">
+            <h3>🎮 Game Rules</h3>
+            <ul>
+              <li>🐍 Control your snake using the joystick</li>
+              <li>🍎 Eat food to grow larger and gain points</li>
+              <li>💥 Avoid hitting other snakes and walls</li>
+              <li>🏆 Survive 3 minutes to win the prize pool!</li>
+            </ul>
           </div>
-        </div>
 
-        <div className="game-preview">
-          <SnakeGame 
-            isPlaying={true}
-            isBot={true} 
-            isPreview={true}
-            isPaidLobby={false}
-            onScoreChange={() => {}}
-            onGameOver={() => {}}
-            onGameWin={() => {}}
-          />
-        </div>
-
-        <style jsx>{`
-          .container {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            padding: 20px;
-          }
-
-          .header {
-            text-align: center;
-            margin-bottom: 30px;
-          }
-
-          .header h1 {
-            font-size: 3rem;
-            margin: 0;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-          }
-
-          .subtitle {
-            font-size: 1.2rem;
-            margin: 10px 0;
-            opacity: 0.9;
-          }
-
-          .lobby-buttons {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-bottom: 30px;
-          }
-
-          .bot-lobby-btn, .paid-lobby-btn {
-            padding: 15px 30px;
-            border: none;
-            border-radius: 12px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            min-width: 200px;
-          }
-
-          .paid-lobby-btn {
-            background: #f59e0b;
-            color: white;
-          }
-
-          .paid-lobby-btn:hover {
-            background: #d97706;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
-          }
-
-          .bot-lobby-btn {
-            background: #4ade80;
-            color: white;
-          }
-
-          .bot-lobby-btn:hover {
-            background: #22c55e;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(74, 222, 128, 0.4);
-          }
-
-          .game-rules {
-            background: rgba(255,255,255,0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 30px;
-            text-align: center;
-            border: 1px solid rgba(255,255,255,0.2);
-          }
-
-          .game-rules h3 {
-            margin: 0 0 15px 0;
-            font-size: 1.3rem;
-          }
-
-          .rules-list {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            flex-wrap: wrap;
-          }
-
-          .rule {
-            background: rgba(255,255,255,0.2);
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-          }
-
-          .game-preview {
-            width: 444px;
-            height: 444px;
-            border: none;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            background: white;
-          }
-
-          @media (max-width: 768px) {
-            .header h1 {
-              font-size: 2rem;
-            }
-            
-            .game-preview {
-              width: 300px;
-              height: 300px;
-            }
-            
-            .lobby-buttons {
-              flex-direction: column;
-              width: 100%;
-              max-width: 300px;
-            }
-          }
-        `}</style>
-      </div>
-    )
-  }
-
-  if (currentView === 'bot-lobby') {
-    return (
-      <div className="game-container">
-        <div className="game-header">
-          <h2>🤖 Bot Lobby</h2>
-          <button onClick={resetGame} className="back-btn">← Back to Home</button>
-        </div>
-
-        {!gameStarted && (
-          <div className="lobby-status">
-            <p>Starting bot game...</p>
-            <button onClick={() => setGameStarted(true)} className="start-btn">
-              🎮 Start Game
-            </button>
-          </div>
-        )}
-
-        {gameStarted && (
-          <SnakeGame 
-            isPlaying={true}
-            isBot={false}
-            isPreview={false}
-            isPaidLobby={false}
-            onScoreChange={setGameScore}
-            onGameOver={(score) => {
-              setGameScore(score)
-              setGameEnded(true)
-            }}
-            onGameWin={(score) => {
-              setGameScore(score)
-              setGameEnded(true)
-            }}
-          />
-        )}
-
-        {gameEnded && (
-          <div className="game-end-overlay">
-            <div className="game-end-modal">
-              <h2>🎮 Game Over!</h2>
-              <p className="final-score">Final Score: {gameScore}</p>
-              <p>Good practice! Ready for the paid lobby?</p>
-              <div className="end-buttons">
-                <button onClick={resetGame} className="play-again-btn">
-                  🔄 Play Again
-                </button>
-                <button onClick={joinPaidLobby} className="paid-lobby-btn">
-                  💰 Join Paid Lobby
-                </button>
-              </div>
+          {/* Live Game Preview - Fourth */}
+          <div className="preview-section">
+            <h3>🎯 Live Game Preview</h3>
+            <div className="preview-container">
+              <SnakeGame 
+                isPlaying={true}
+                isBot={true}
+                isPreview={true}
+                isPaidLobby={false}
+              />
             </div>
           </div>
-        )}
-
-        <style jsx>{`
-          .game-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            background: #1a1a1a;
-            color: white;
-            padding: 20px;
-          }
-
-          .game-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-            max-width: 500px;
-            margin-bottom: 20px;
-          }
-
-          .game-header h2 {
-            margin: 0;
-            color: #4ade80;
-          }
-
-          .back-btn {
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.2);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-          }
-
-          .back-btn:hover {
-            background: rgba(255,255,255,0.2);
-          }
-
-          .lobby-status {
-            text-align: center;
-            background: rgba(255,255,255,0.1);
-            padding: 30px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-          }
-
-          .start-btn {
-            background: #4ade80;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            margin-top: 15px;
-            font-size: 1.1rem;
-          }
-
-          .start-btn:hover {
-            background: #22c55e;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(74, 222, 128, 0.4);
-          }
-
-          .game-end-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-          }
-
-          .game-end-modal {
-            background: #2a2a2a;
-            border-radius: 16px;
-            padding: 30px;
-            text-align: center;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-            max-width: 400px;
-            width: 90%;
-          }
-
-          .final-score {
-            font-size: 1.5rem;
-            color: #a855f7;
-            margin: 15px 0;
-            font-weight: bold;
-          }
-
-          .end-buttons {
-            display: flex;
-            gap: 15px;
-            margin-top: 20px;
-            justify-content: center;
-            flex-wrap: wrap;
-          }
-
-          .play-again-btn, .paid-lobby-btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s ease;
-          }
-
-          .play-again-btn {
-            background: #4ade80;
-            color: white;
-          }
-
-          .play-again-btn:hover {
-            background: #22c55e;
-          }
-
-          .paid-lobby-btn {
-            background: #f59e0b;
-            color: white;
-          }
-
-          .paid-lobby-btn:hover {
-            background: #d97706;
-          }
-        `}</style>
-      </div>
-    )
-  }
-
-  if (currentView === 'paid-lobby') {
-    return (
-      <div className="game-container">
-        <div className="game-header">
-          <h2>💰 Paid Lobby</h2>
-          <button onClick={resetGame} className="back-btn">← Back to Home</button>
         </div>
+      )}
 
-        {!walletAddress && (
-          <div className="wallet-connect">
-            <p>Connect your Farcaster wallet to join</p>
-            <button onClick={connectWallet} disabled={isConnecting} className="connect-btn">
-              {isConnecting ? 'Connecting...' : '🔗 Connect Wallet'}
-            </button>
-          </div>
-        )}
-
-        {walletAddress && !gameStarted && (
-          <div className="lobby-status">
-            <p>Players: {players.length}/5</p>
-            {countdown && <p className="countdown">Starting in {countdown}s</p>}
-            {players.length < 3 && <p>Waiting for at least 3 players...</p>}
-          </div>
-        )}
-
-        {gameStarted && (
-          <SnakeGame 
-            isPlaying={true}
-            isBot={false} 
-            isPreview={false}
-            isPaidLobby={true}
-            onScoreChange={setGameScore}
-            onGameOver={(score) => handleGameEnd(score, false)}
-            onGameWin={(score) => handleGameEnd(score, true)}
-          />
-        )}
-
-        {gameEnded && (
-          <div className="game-end-overlay">
-            <div className="game-end-modal">
-              <h2>🏆 You Won!</h2>
-              <p className="final-score">Final Score: {gameScore}</p>
-              <p>You earned $3 USDC! 🎉</p>
-              <div className="end-buttons">
-                <button onClick={() => sharePaidLobbyWin(gameScore)} className="share-btn">
-                  📱 Share Your Win
-                </button>
-                <button onClick={resetGame} className="play-again-btn">
-                  🔄 Play Again
-                </button>
+      {currentView === 'bot-lobby' && (
+        <div className="lobby-page">
+          <h2 className="lobby-title">🤖 Bot Lobby</h2>
+          
+          {!gameStarted ? (
+            <div className="lobby-content">
+              <div className="lobby-info">
+                <p className="lobby-desc">Practice with AI opponents!</p>
+                <p className="player-count">Players: 10 (You + 9 Bots)</p>
               </div>
+              
+              <button 
+                onClick={startBotGame}
+                className="start-btn"
+              >
+                🚀 Start Game
+              </button>
+              
+              <button 
+                onClick={() => setCurrentView('home')}
+                className="back-btn"
+              >
+                ← Back to Home
+              </button>
             </div>
-          </div>
-        )}
+          ) : gameEnded ? (
+            <div className="game-over">
+              <h3 className="final-score">Game Over!</h3>
+              <p className="score-text">Final Score: {gameScore}</p>
+              <button 
+                onClick={() => {
+                  setGameStarted(false)
+                  setGameEnded(false)
+                  setGameScore(0)
+                }}
+                className="play-again-btn"
+              >
+                🔄 Play Again
+              </button>
+              <button 
+                onClick={() => setCurrentView('home')}
+                className="back-btn"
+              >
+                ← Back to Home
+              </button>
+            </div>
+          ) : (
+            <div className="game-container">
+              <SnakeGame 
+                isPlaying={gameStarted}
+                isBot={false}
+                onScoreChange={setGameScore}
+                onGameOver={(score) => {
+                  setGameScore(score)
+                  setGameEnded(true)
+                }}
+                isPaidLobby={false}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
-        <style jsx>{`
-          .game-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            background: #1a1a1a;
-            color: white;
+      {currentView === 'paid-lobby' && (
+        <div className="lobby-page">
+          <h2 className="lobby-title">💰 Paid Lobby</h2>
+          
+          {!walletAddress ? (
+            <div className="wallet-connect">
+              <p className="connect-desc">Connect your wallet to join the paid lobby!</p>
+              <button 
+                onClick={connectWallet}
+                disabled={isConnecting}
+                className="connect-btn"
+              >
+                {isConnecting ? '🔄 Connecting...' : '🔗 Connect Wallet'}
+              </button>
+              <button 
+                onClick={() => setCurrentView('home')}
+                className="back-btn"
+              >
+                ← Back to Home
+              </button>
+            </div>
+          ) : !gameStarted ? (
+            <div className="lobby-content">
+              <div className="lobby-info">
+                <p className="lobby-desc">Entry Fee: $5 USDC • Winner takes 80% of pool!</p>
+                <p className="player-count">Players: {players.length}/5</p>
+                <p className="wallet-info">Wallet: {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}</p>
+              </div>
+              
+              {countdown !== null ? (
+                <div className="countdown">
+                  <h3 className="countdown-text">Game starts in {countdown}s!</h3>
+                </div>
+              ) : players.length < 5 ? (
+                <div className="waiting">
+                  <p className="waiting-text">Waiting for more players...</p>
+                </div>
+              ) : null}
+              
+              <button 
+                onClick={() => setCurrentView('home')}
+                className="back-btn"
+              >
+                ← Back to Home
+              </button>
+            </div>
+          ) : gameEnded ? (
+            <div className="game-over">
+              <h3 className="final-score">
+                {gameScore > 50 ? '🎉 You Won!' : '💀 Game Over'}
+              </h3>
+              <p className="score-text">Final Score: {gameScore}</p>
+              {gameScore > 50 && (
+                <button 
+                  onClick={shareWin}
+                  className="share-btn"
+                >
+                  📤 Share Victory on Farcaster
+                </button>
+              )}
+              <button 
+                onClick={() => setCurrentView('home')}
+                className="back-btn"
+              >
+                ← Back to Home
+              </button>
+            </div>
+          ) : (
+            <div className="game-container">
+              <SnakeGame 
+                isPlaying={gameStarted}
+                isBot={false}
+                onScoreChange={setGameScore}
+                onGameOver={(score) => {
+                  setGameScore(score)
+                  setGameEnded(true)
+                }}
+                onGameWin={(finalScore, isWinner) => {
+                  setGameScore(finalScore)
+                  setGameEnded(true)
+                }}
+                isPaidLobby={true}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      <style jsx>{`
+        .app-container {
+          min-height: 100vh;
+          background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          position: relative;
+          overflow-x: hidden;
+        }
+
+        .app-container::before {
+          content: '';
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-image: 
+            linear-gradient(45deg, transparent 25%, rgba(138, 43, 226, 0.1) 25%, rgba(138, 43, 226, 0.1) 50%, transparent 50%),
+            linear-gradient(-45deg, transparent 25%, rgba(138, 43, 226, 0.1) 25%, rgba(138, 43, 226, 0.1) 50%, transparent 50%);
+          background-size: 60px 60px;
+          animation: backgroundMove 20s linear infinite;
+          pointer-events: none;
+          z-index: 0;
+        }
+
+        .home-page, .lobby-page {
+          position: relative;
+          z-index: 1;
+          padding: 40px 20px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          min-height: 100vh;
+          justify-content: center;
+        }
+
+        .primary-btn {
+          background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(0, 136, 255, 0.2));
+          border: 3px solid #00ffff;
+          color: #00ffff;
+          padding: 18px 36px;
+          border-radius: 15px;
+          font-size: 1.3rem;
+          font-weight: bold;
+          cursor: pointer;
+          margin: 15px;
+          transition: all 0.3s ease;
+          text-shadow: 0 0 15px rgba(0, 255, 255, 0.8);
+          box-shadow: 
+            0 0 25px rgba(0, 255, 255, 0.4),
+            inset 0 0 15px rgba(0, 255, 255, 0.1);
+          width: 280px;
+        }
+
+        .primary-btn:hover {
+          transform: translateY(-2px) scale(1.02);
+          box-shadow: 
+            0 8px 30px rgba(0, 255, 255, 0.6),
+            inset 0 0 20px rgba(0, 255, 255, 0.2);
+          text-shadow: 0 0 20px rgba(0, 255, 255, 1);
+        }
+
+        .paid-lobby-btn {
+          background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.2));
+          border-color: #ffd700;
+          color: #ffd700;
+          text-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+          box-shadow: 
+            0 0 25px rgba(255, 215, 0, 0.4),
+            inset 0 0 15px rgba(255, 215, 0, 0.1);
+        }
+
+        .paid-lobby-btn:hover {
+          box-shadow: 
+            0 8px 30px rgba(255, 215, 0, 0.6),
+            inset 0 0 20px rgba(255, 215, 0, 0.2);
+          text-shadow: 0 0 20px rgba(255, 215, 0, 1);
+        }
+
+        .rules-section {
+          background: linear-gradient(135deg, rgba(138, 43, 226, 0.2), rgba(75, 0, 130, 0.2));
+          border: 2px solid #8a2be2;
+          border-radius: 15px;
+          padding: 25px;
+          margin: 20px;
+          max-width: 500px;
+          text-align: left;
+          box-shadow: 
+            0 0 25px rgba(138, 43, 226, 0.4),
+            inset 0 0 15px rgba(138, 43, 226, 0.1);
+        }
+
+        .rules-section h3 {
+          color: #8a2be2;
+          font-size: 1.4rem;
+          margin-bottom: 15px;
+          text-shadow: 0 0 15px rgba(138, 43, 226, 0.8);
+          text-align: center;
+        }
+
+        .rules-section ul {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+        }
+
+        .rules-section li {
+          color: #ffffff;
+          margin: 10px 0;
+          font-size: 1rem;
+          text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        .preview-section {
+          margin-top: 30px;
+          text-align: center;
+        }
+
+        .preview-section h3 {
+          color: #00ff88;
+          font-size: 1.4rem;
+          margin-bottom: 20px;
+          text-shadow: 0 0 15px rgba(0, 255, 136, 0.8);
+        }
+
+        .preview-container {
+          border: 3px solid rgba(0, 255, 255, 0.6);
+          border-radius: 15px;
+          overflow: hidden;
+          box-shadow: 
+            0 0 30px rgba(0, 255, 255, 0.4),
+            inset 0 0 20px rgba(0, 255, 255, 0.1);
+        }
+
+        .lobby-title {
+          color: #00ffff;
+          font-size: 2.5rem;
+          font-weight: bold;
+          text-shadow: 0 0 25px rgba(0, 255, 255, 0.8);
+          margin-bottom: 30px;
+          animation: glow 3s ease-in-out infinite alternate;
+        }
+
+        .lobby-content, .wallet-connect, .game-over {
+          background: linear-gradient(135deg, rgba(138, 43, 226, 0.2), rgba(75, 0, 130, 0.2));
+          border: 2px solid #8a2be2;
+          border-radius: 15px;
+          padding: 30px;
+          margin: 20px;
+          text-align: center;
+          box-shadow: 
+            0 0 25px rgba(138, 43, 226, 0.4),
+            inset 0 0 15px rgba(138, 43, 226, 0.1);
+        }
+
+        .lobby-desc, .connect-desc {
+          color: #ffffff;
+          font-size: 1.2rem;
+          margin-bottom: 15px;
+          text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        .player-count, .wallet-info {
+          color: #00ff88;
+          font-size: 1.1rem;
+          font-weight: bold;
+          margin: 10px 0;
+          text-shadow: 0 0 15px rgba(0, 255, 136, 0.8);
+        }
+
+        .start-btn, .connect-btn, .share-btn, .play-again-btn {
+          background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 200, 100, 0.2));
+          border: 3px solid #00ff88;
+          color: #00ff88;
+          padding: 15px 30px;
+          border-radius: 12px;
+          font-size: 1.2rem;
+          font-weight: bold;
+          cursor: pointer;
+          margin: 15px;
+          transition: all 0.3s ease;
+          text-shadow: 0 0 15px rgba(0, 255, 136, 0.8);
+          box-shadow: 
+            0 0 25px rgba(0, 255, 136, 0.4),
+            inset 0 0 15px rgba(0, 255, 136, 0.1);
+        }
+
+        .start-btn:hover, .connect-btn:hover, .share-btn:hover, .play-again-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 
+            0 8px 30px rgba(0, 255, 136, 0.6),
+            inset 0 0 20px rgba(0, 255, 136, 0.2);
+        }
+
+        .back-btn {
+          background: linear-gradient(135deg, rgba(255, 100, 100, 0.2), rgba(200, 50, 50, 0.2));
+          border: 2px solid #ff6464;
+          color: #ff6464;
+          padding: 12px 24px;
+          border-radius: 10px;
+          font-size: 1rem;
+          cursor: pointer;
+          margin: 10px;
+          transition: all 0.3s ease;
+          text-shadow: 0 0 10px rgba(255, 100, 100, 0.8);
+          box-shadow: 
+            0 0 20px rgba(255, 100, 100, 0.3),
+            inset 0 0 10px rgba(255, 100, 100, 0.1);
+        }
+
+        .back-btn:hover {
+          transform: translateY(-1px);
+          box-shadow: 
+            0 6px 25px rgba(255, 100, 100, 0.5),
+            inset 0 0 15px rgba(255, 100, 100, 0.2);
+        }
+
+        .countdown, .waiting {
+          margin: 20px 0;
+        }
+
+        .countdown-text, .waiting-text {
+          color: #ffd700;
+          font-size: 1.5rem;
+          font-weight: bold;
+          text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+          animation: pulse 1s ease-in-out infinite;
+        }
+
+        .final-score {
+          color: #00ff88;
+          font-size: 2rem;
+          font-weight: bold;
+          text-shadow: 0 0 25px rgba(0, 255, 136, 0.8);
+          margin-bottom: 15px;
+        }
+
+        .score-text {
+          color: #00ffff;
+          font-size: 1.3rem;
+          font-weight: bold;
+          text-shadow: 0 0 15px rgba(0, 255, 255, 0.8);
+          margin-bottom: 20px;
+        }
+
+        .game-container {
+          width: 100%;
+          display: flex;
+          justify-content: center;
+        }
+
+        @keyframes backgroundMove {
+          0% { transform: translateX(0) translateY(0); }
+          100% { transform: translateX(-60px) translateY(-60px); }
+        }
+
+        @keyframes glow {
+          from { text-shadow: 0 0 25px rgba(0, 255, 255, 0.8); }
+          to { text-shadow: 0 0 35px rgba(0, 255, 255, 1); }
+        }
+
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+        }
+
+        @media (max-width: 768px) {
+          .home-page, .lobby-page {
+            padding: 20px 10px;
+          }
+
+          .primary-btn {
+            width: 250px;
+            font-size: 1.1rem;
+            padding: 15px 25px;
+          }
+
+          .lobby-title {
+            font-size: 2rem;
+          }
+
+          .rules-section {
+            max-width: 90%;
             padding: 20px;
           }
 
-          .game-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-            max-width: 500px;
-            margin-bottom: 20px;
-          }
-
-          .game-header h2 {
-            margin: 0;
-            color: #f59e0b;
-          }
-
-          .back-btn {
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.2);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-          }
-
-          .back-btn:hover {
-            background: rgba(255,255,255,0.2);
-          }
-
-          .wallet-connect {
-            text-align: center;
-            background: rgba(255,255,255,0.1);
-            padding: 30px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-          }
-
-          .connect-btn {
-            background: #a855f7;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            margin-top: 15px;
-          }
-
-          .connect-btn:hover:not(:disabled) {
-            background: #9333ea;
-          }
-
-          .connect-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-          }
-
-          .lobby-status {
-            text-align: center;
-            background: rgba(255,255,255,0.1);
+          .lobby-content, .wallet-connect, .game-over {
             padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
+            margin: 10px;
           }
-
-          .countdown {
-            font-size: 1.5rem;
-            color: #f59e0b;
-            font-weight: bold;
-          }
-
-          .game-end-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-          }
-
-          .game-end-modal {
-            background: #2a2a2a;
-            border-radius: 16px;
-            padding: 30px;
-            text-align: center;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-            max-width: 400px;
-            width: 90%;
-          }
-
-          .final-score {
-            font-size: 1.5rem;
-            color: #f59e0b;
-            margin: 15px 0;
-            font-weight: bold;
-          }
-
-          .end-buttons {
-            display: flex;
-            gap: 15px;
-            margin-top: 20px;
-            justify-content: center;
-            flex-wrap: wrap;
-          }
-
-          .share-btn, .play-again-btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s ease;
-          }
-
-          .share-btn {
-            background: #a855f7;
-            color: white;
-          }
-
-          .share-btn:hover {
-            background: #9333ea;
-          }
-
-          .play-again-btn {
-            background: #4ade80;
-            color: white;
-          }
-
-          .play-again-btn:hover {
-            background: #22c55e;
-          }
-        `}</style>
-      </div>
-    )
-  }
-
-  return null
+        }
+      `}</style>
+    </div>
+  )
 }
