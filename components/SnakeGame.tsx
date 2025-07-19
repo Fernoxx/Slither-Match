@@ -45,8 +45,8 @@ interface JoystickState {
 }
 
 // Game constants
-const WORLD_SIZE = 2400 // 3x larger world
-const VIEWPORT_SIZE = 800
+const WORLD_SIZE = 1332 // 3x larger world (444 * 3)
+const VIEWPORT_SIZE = 444 // Game box size
 const GAME_SPEED = 60 // 60 FPS
 const GAME_DURATION = 180 // 3 minutes in seconds
 const WALLS_WIDTH = 10 // Wall thickness
@@ -86,7 +86,16 @@ export const SnakeGame: React.FC<GameProps> = ({
   const [gameStarted, setGameStarted] = useState(false)
   const [gameEnded, setGameEnded] = useState(false)
   const [timeLeft, setTimeLeft] = useState(GAME_DURATION)
-  const [camera, setCamera] = useState<Camera>({ x: 0, y: 0 })
+  const [camera, setCamera] = useState<Camera>(() => {
+    if (isPreview) {
+      // Center camera for preview mode
+      return {
+        x: WORLD_SIZE / 2 - VIEWPORT_SIZE / 2,
+        y: WORLD_SIZE / 2 - VIEWPORT_SIZE / 2
+      }
+    }
+    return { x: 0, y: 0 }
+  })
   const [joystick, setJoystick] = useState<JoystickState>({
     isDragging: false,
     knobPosition: { x: 0, y: 0 },
@@ -472,17 +481,29 @@ export const SnakeGame: React.FC<GameProps> = ({
     }
   }, [interpolateAngle, calculateSnakeRadius, isPreview])
 
-  // Update camera to follow player
+  // Update camera to follow player (or center in preview mode)
   const updateCamera = useCallback((playerPosition: Position) => {
-    const targetX = playerPosition.x - VIEWPORT_SIZE / 2
-    const targetY = playerPosition.y - VIEWPORT_SIZE / 2
-    
-    // Smooth camera movement
-    setCamera(prev => ({
-      x: prev.x + (targetX - prev.x) * 0.1,
-      y: prev.y + (targetY - prev.y) * 0.1
-    }))
-  }, [])
+    if (isPreview) {
+      // Center the camera in the world for preview mode
+      const centerX = WORLD_SIZE / 2 - VIEWPORT_SIZE / 2
+      const centerY = WORLD_SIZE / 2 - VIEWPORT_SIZE / 2
+      
+      setCamera(prev => ({
+        x: prev.x + (centerX - prev.x) * 0.05, // Slower smooth movement for preview
+        y: prev.y + (centerY - prev.y) * 0.05
+      }))
+    } else {
+      // Follow player in actual game
+      const targetX = playerPosition.x - VIEWPORT_SIZE / 2
+      const targetY = playerPosition.y - VIEWPORT_SIZE / 2
+      
+      // Smooth camera movement
+      setCamera(prev => ({
+        x: prev.x + (targetX - prev.x) * 0.1,
+        y: prev.y + (targetY - prev.y) * 0.1
+      }))
+    }
+  }, [isPreview])
 
   // AI for bot snakes
   const updateBotAngle = useCallback((snake: Snake, allSnakes: Snake[], allFood: Food[]): number => {
