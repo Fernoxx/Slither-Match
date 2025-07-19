@@ -962,10 +962,13 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
           width: ${KNOB_SIZE}px;
           height: ${KNOB_SIZE}px;
           border-radius: 50%;
-          background: linear-gradient(135deg, #00ffff, #0088ff);
-          border: 2px solid #ffffff;
-          box-shadow: 0 4px 8px rgba(0,255,255,0.3), 0 0 15px rgba(0,255,255,0.5);
-          transition: transform 0.1s ease-out;
+          background: linear-gradient(135deg, #fbbf24, #f59e0b);
+          border: 3px solid #ffffff;
+          box-shadow: 
+            0 4px 15px rgba(251, 191, 36, 0.4),
+            0 0 20px rgba(251, 191, 36, 0.6),
+            inset 0 0 15px rgba(255, 255, 255, 0.3);
+          transition: transform 0.05s ease-out;
         }
 
         .bottom-instructions {
@@ -974,14 +977,16 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
           align-items: center;
           width: ${VIEWPORT_SIZE}px;
           margin-top: 20px;
-          color: #00ffff;
-          text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+          color: #ffffff;
+          text-shadow: 0 0 15px rgba(255, 255, 255, 0.6);
           z-index: 1;
         }
 
         .bottom-score {
           font-size: 1.2rem;
           font-weight: bold;
+          color: #fbbf24;
+          text-shadow: 0 0 20px rgba(251, 191, 36, 0.8);
         }
 
         @keyframes backgroundMove {
