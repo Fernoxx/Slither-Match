@@ -113,6 +113,26 @@
     padding: 1rem;
   }
 
+  .game-rules-simple {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+  }
+
+  .game-rules-simple .rule-item {
+    font-size: 0.9rem;
+    color: #6b7280;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    background: rgba(139, 92, 246, 0.05);
+    border: 1px solid rgba(139, 92, 246, 0.15);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
   .preview-features {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));

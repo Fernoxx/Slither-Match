@@ -191,19 +191,14 @@ export default function Home() {
               <SnakeGame isPlaying={true} isBot={true} isPreview={true} />
             </div>
             
-            {/* Game Rules Quick Info */}
+            {/* Game Rules */}
             <div className="preview-info">
-              <div className="preview-features">
-                <div className="feature-item">🗺️ 3x Larger World + Mini-Map</div>
-                <div className="feature-item">🕹️ Touch Joystick Controls</div>
-                <div className="feature-item">🐍 Smart Snake Sizing</div>
-                <div className="feature-item">⏰ 3 Minute Matches</div>
-                <div className="feature-item">🏆 Last Snake Wins</div>
-              </div>
-              <div className="preview-scoring">
-                <div className="score-rule">🔴 Red dots = 3 points</div>
-                <div className="score-rule">🟢 Green dots = 6 points</div>
-                <div className="score-rule">🟣 Purple dots = 12 points</div>
+              <div className="game-rules-simple">
+                <div className="rule-item">💰 $1 USDC entry fee</div>
+                <div className="rule-item">🏆 Winner takes all</div>
+                <div className="rule-item">🔴 Red dots = 3 points</div>
+                <div className="rule-item">🟢 Green dots = 6 points</div>
+                <div className="rule-item">🟣 Purple dots = 12 points</div>
               </div>
             </div>
           </div>
