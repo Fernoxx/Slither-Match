@@ -20,6 +20,7 @@ export default function Home() {
   const [gameTime, setGameTime] = useState(180) // 3 minutes
   const [playersInLobby, setPlayersInLobby] = useState<string[]>([])
   const [gameScore, setGameScore] = useState(0)
+  const [gameResult, setGameResult] = useState<{ isWinner: boolean, finalScore: number } | null>(null)
 
   // Read lobby data when in a lobby
   const { data: lobbyPlayers } = useReadContract({
@@ -76,12 +77,30 @@ export default function Home() {
     setCurrentLobby(null)
     setGameTime(180)
     setGameScore(0)
+    setGameResult(null)
   }
 
   const handleGameOver = () => {
-    // Game over logic
-    alert(`Game Over! Final Score: ${gameScore}`)
-    setCurrentView('menu')
+    // Game over logic - player died
+    alert(`Game Over! You died. Final Score: ${gameScore}`)
+    setTimeout(() => {
+      setCurrentView('menu')
+    }, 2000)
+  }
+
+  const handleGameWin = (finalScore: number, isWinner: boolean) => {
+    // Game win logic - game ended (time up or last snake standing)
+    setGameResult({ isWinner, finalScore })
+    
+    if (isWinner) {
+      alert(`🎉 You Won! Final Score: ${finalScore}\n\nYou get ${playersInLobby.length} USDC!`)
+    } else {
+      alert(`Game Ended! Your Score: ${finalScore}\n\nBetter luck next time!`)
+    }
+    
+    setTimeout(() => {
+      setCurrentView('menu')
+    }, 3000)
   }
 
   const formatTime = (seconds: number) => {
@@ -96,6 +115,21 @@ export default function Home() {
         <div className="menu-container">
           {/* Title */}
           <h1 className="game-title">SlitherMatch</h1>
+          
+          {/* Show last game result if available */}
+          {gameResult && (
+            <div className={`game-result-banner ${gameResult.isWinner ? 'winner' : 'loser'}`}>
+              {gameResult.isWinner ? (
+                <div className="result-content">
+                  🏆 You Won! Score: {gameResult.finalScore}
+                </div>
+              ) : (
+                <div className="result-content">
+                  😔 Game Over! Score: {gameResult.finalScore}
+                </div>
+              )}
+            </div>
+          )}
           
           {/* Join Lobby Button */}
           <div className="menu-section">
@@ -200,8 +234,6 @@ export default function Home() {
               <span>Players: {playersInLobby.length}</span>
               <span>•</span>
               <span>Prize: ${playersInLobby.length} USDC</span>
-              <span>•</span>
-              <span>Time: {formatTime(gameTime)}</span>
             </div>
           </div>
 
@@ -212,6 +244,7 @@ export default function Home() {
               isBot={false}
               onScoreChange={setGameScore}
               onGameOver={handleGameOver}
+              onGameWin={handleGameWin}
             />
           </div>
 
@@ -231,7 +264,7 @@ export default function Home() {
           {/* Game Controls */}
           <div className="game-controls">
             <div className="control-instructions">
-              Use arrow keys to control your snake
+              Use joystick to control your snake
             </div>
             <button onClick={handleBackToMenu} className="leave-game-btn">
               Leave Game

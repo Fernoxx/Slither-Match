@@ -5,6 +5,7 @@ interface GameProps {
   isBot?: boolean
   onScoreChange?: (score: number) => void
   onGameOver?: () => void
+  onGameWin?: (finalScore: number, isWinner: boolean) => void
 }
 
 interface Position {
@@ -20,6 +21,7 @@ interface Snake {
   score: number
   isPlayer?: boolean
   width: number
+  isDead?: boolean
 }
 
 interface Food {
@@ -48,6 +50,7 @@ const VIEWPORT_CELLS = Math.floor(VIEWPORT_SIZE / CELL_SIZE)
 const GAME_SPEED = 120
 const MAX_SNAKE_WIDTH = 15 // 1.5cm at 96dpi ≈ 15px
 const MIN_SNAKE_WIDTH = 4
+const GAME_DURATION = 180 // 3 minutes in seconds
 
 // Joystick constants
 const JOYSTICK_SIZE = 80
@@ -57,17 +60,21 @@ export const SnakeGame: React.FC<GameProps> = ({
   isPlaying, 
   isBot = false, 
   onScoreChange, 
-  onGameOver 
+  onGameOver,
+  onGameWin
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const miniMapRef = useRef<HTMLCanvasElement>(null)
   const joystickRef = useRef<HTMLDivElement>(null)
   const gameLoopRef = useRef<NodeJS.Timeout | null>(null)
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
   
   const [snakes, setSnakes] = useState<Snake[]>([])
   const [food, setFood] = useState<Food[]>([])
   const [playerScore, setPlayerScore] = useState(0)
   const [gameStarted, setGameStarted] = useState(false)
+  const [gameEnded, setGameEnded] = useState(false)
+  const [timeLeft, setTimeLeft] = useState(GAME_DURATION)
   const [camera, setCamera] = useState<Camera>({ x: 0, y: 0 })
   const [joystick, setJoystick] = useState<JoystickState>({
     isDragging: false,
@@ -87,6 +94,13 @@ export const SnakeGame: React.FC<GameProps> = ({
     FOOD_GREEN: '#22c55e',
     FOOD_PURPLE: '#8b5cf6'
   }
+
+  // Format time display
+  const formatTime = useCallback((seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }, [])
 
   // Generate random position in world
   const generateRandomPosition = useCallback((): Position => {
@@ -118,6 +132,38 @@ export const SnakeGame: React.FC<GameProps> = ({
     return Math.min(MIN_SNAKE_WIDTH + widthIncrease, MAX_SNAKE_WIDTH)
   }, [])
 
+  // Check game end conditions
+  const checkGameEnd = useCallback((currentSnakes: Snake[]) => {
+    if (gameEnded) return
+
+    const aliveSnakes = currentSnakes.filter(snake => !snake.isDead)
+    const playerSnake = currentSnakes.find(snake => snake.isPlayer)
+    
+    // Check if player is dead
+    if (playerSnake?.isDead) {
+      setGameEnded(true)
+      onGameOver?.()
+      return
+    }
+
+    // Check if time is up or only player is alive
+    if (timeLeft <= 0 || aliveSnakes.length <= 1) {
+      setGameEnded(true)
+      
+      // Find winner by highest score
+      const sortedSnakes = [...currentSnakes].sort((a, b) => b.score - a.score)
+      const winner = sortedSnakes[0]
+      const isPlayerWinner = winner.isPlayer
+
+      if (isPlayerWinner) {
+        onGameWin?.(winner.score, true)
+      } else {
+        onGameWin?.(playerSnake?.score || 0, false)
+      }
+      return
+    }
+  }, [gameEnded, timeLeft, onGameOver, onGameWin])
+
   // Initialize game
   const initializeGame = useCallback(() => {
     const initialSnakes: Snake[] = []
@@ -132,7 +178,8 @@ export const SnakeGame: React.FC<GameProps> = ({
         color: COLORS.PLAYER,
         score: 0,
         isPlayer: true,
-        width: MIN_SNAKE_WIDTH
+        width: MIN_SNAKE_WIDTH,
+        isDead: false
       })
       
       // Set camera to follow player
@@ -157,7 +204,8 @@ export const SnakeGame: React.FC<GameProps> = ({
         },
         color: botColors[i],
         score: 0,
-        width: MIN_SNAKE_WIDTH
+        width: MIN_SNAKE_WIDTH,
+        isDead: false
       })
     }
 
@@ -171,10 +219,14 @@ export const SnakeGame: React.FC<GameProps> = ({
     setFood(initialFood)
     setPlayerScore(0)
     setGameStarted(true)
+    setGameEnded(false)
+    setTimeLeft(GAME_DURATION)
   }, [isBot, generateRandomPosition, generateFood])
 
   // Move snake
   const moveSnake = useCallback((snake: Snake): Snake => {
+    if (snake.isDead) return snake
+
     const head = snake.positions[0]
     const newHead = {
       x: head.x + snake.direction.x,
@@ -219,6 +271,8 @@ export const SnakeGame: React.FC<GameProps> = ({
 
   // AI for bot snakes
   const updateBotDirection = useCallback((snake: Snake, allFood: Food[], allSnakes: Snake[]): { x: number, y: number } => {
+    if (snake.isDead) return snake.direction
+
     const head = snake.positions[0]
     
     // Find nearest food
@@ -276,13 +330,17 @@ export const SnakeGame: React.FC<GameProps> = ({
 
   // Check snake collision
   const checkSnakeCollision = useCallback((snake: Snake, allSnakes: Snake[]): boolean => {
+    if (snake.isDead) return false
+
     const head = snake.positions[0]
     
-    // Check collision with other snakes
+    // Check collision with other snakes (including their own body after head)
     for (const otherSnake of allSnakes) {
-      if (otherSnake.id === snake.id) continue
+      if (otherSnake.isDead) continue
       
-      for (const segment of otherSnake.positions) {
+      const segments = otherSnake.id === snake.id ? otherSnake.positions.slice(1) : otherSnake.positions
+      
+      for (const segment of segments) {
         if (head.x === segment.x && head.y === segment.y) {
           return true
         }
@@ -292,9 +350,34 @@ export const SnakeGame: React.FC<GameProps> = ({
     return false
   }, [])
 
+  // Timer effect
+  useEffect(() => {
+    if (isPlaying && gameStarted && !gameEnded) {
+      timerRef.current = setInterval(() => {
+        setTimeLeft(prev => {
+          const newTime = prev - 1
+          if (newTime <= 0) {
+            return 0
+          }
+          return newTime
+        })
+      }, 1000)
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+      }
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+      }
+    }
+  }, [isPlaying, gameStarted, gameEnded])
+
   // Joystick event handlers
   const handleJoystickStart = useCallback((clientX: number, clientY: number) => {
-    if (!joystickRef.current) return
+    if (!joystickRef.current || gameEnded) return
     
     const rect = joystickRef.current.getBoundingClientRect()
     const centerX = rect.left + rect.width / 2
@@ -305,10 +388,10 @@ export const SnakeGame: React.FC<GameProps> = ({
       isDragging: true,
       knobPosition: { x: clientX - centerX, y: clientY - centerY }
     }))
-  }, [])
+  }, [gameEnded])
 
   const handleJoystickMove = useCallback((clientX: number, clientY: number) => {
-    if (!joystick.isDragging || !joystickRef.current) return
+    if (!joystick.isDragging || !joystickRef.current || gameEnded) return
     
     const rect = joystickRef.current.getBoundingClientRect()
     const centerX = rect.left + rect.width / 2
@@ -346,7 +429,7 @@ export const SnakeGame: React.FC<GameProps> = ({
       knobPosition: { x: knobX, y: knobY },
       direction: { x: dirX, y: dirY }
     }))
-  }, [joystick.isDragging])
+  }, [joystick.isDragging, gameEnded])
 
   const handleJoystickEnd = useCallback(() => {
     setJoystick(prev => ({
@@ -359,39 +442,39 @@ export const SnakeGame: React.FC<GameProps> = ({
   // Touch events
   useEffect(() => {
     const handleTouchStart = (e: TouchEvent) => {
-      if (!isPlaying || isBot) return
+      if (!isPlaying || isBot || gameEnded) return
       e.preventDefault()
       const touch = e.touches[0]
       handleJoystickStart(touch.clientX, touch.clientY)
     }
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (!isPlaying || isBot) return
+      if (!isPlaying || isBot || gameEnded) return
       e.preventDefault()
       const touch = e.touches[0]
       handleJoystickMove(touch.clientX, touch.clientY)
     }
 
     const handleTouchEnd = (e: TouchEvent) => {
-      if (!isPlaying || isBot) return
+      if (!isPlaying || isBot || gameEnded) return
       e.preventDefault()
       handleJoystickEnd()
     }
 
     // Mouse events for desktop
     const handleMouseDown = (e: MouseEvent) => {
-      if (!isPlaying || isBot) return
+      if (!isPlaying || isBot || gameEnded) return
       e.preventDefault()
       handleJoystickStart(e.clientX, e.clientY)
     }
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isPlaying || isBot) return
+      if (!isPlaying || isBot || gameEnded) return
       handleJoystickMove(e.clientX, e.clientY)
     }
 
     const handleMouseUp = (e: MouseEvent) => {
-      if (!isPlaying || isBot) return
+      if (!isPlaying || isBot || gameEnded) return
       handleJoystickEnd()
     }
 
@@ -416,14 +499,16 @@ export const SnakeGame: React.FC<GameProps> = ({
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isPlaying, isBot, handleJoystickStart, handleJoystickMove, handleJoystickEnd])
+  }, [isPlaying, isBot, gameEnded, handleJoystickStart, handleJoystickMove, handleJoystickEnd])
 
   // Game loop
   const gameLoop = useCallback(() => {
-    if (!isPlaying || !gameStarted) return
+    if (!isPlaying || !gameStarted || gameEnded) return
 
     setSnakes(currentSnakes => {
       const newSnakes = currentSnakes.map(snake => {
+        if (snake.isDead) return snake
+
         // Update bot direction
         if (!snake.isPlayer) {
           snake.direction = updateBotDirection(snake, food, currentSnakes)
@@ -459,22 +544,22 @@ export const SnakeGame: React.FC<GameProps> = ({
 
         // Check snake collision
         if (checkSnakeCollision(movedSnake, currentSnakes)) {
-          if (snake.isPlayer) {
-            onGameOver?.()
-          }
-          return null
+          movedSnake.isDead = true
         }
 
         return movedSnake
-      }).filter(Boolean) as Snake[]
+      })
+
+      // Check game end conditions
+      checkGameEnd(newSnakes)
 
       return newSnakes
     })
-  }, [isPlaying, gameStarted, joystick.direction, food, moveSnake, updateCamera, updateBotDirection, checkFoodCollision, checkSnakeCollision, onScoreChange, onGameOver])
+  }, [isPlaying, gameStarted, gameEnded, joystick.direction, food, moveSnake, updateCamera, updateBotDirection, checkFoodCollision, checkSnakeCollision, onScoreChange, checkGameEnd])
 
   // Game loop effect
   useEffect(() => {
-    if (isPlaying && gameStarted) {
+    if (isPlaying && gameStarted && !gameEnded) {
       gameLoopRef.current = setInterval(gameLoop, GAME_SPEED)
     } else {
       if (gameLoopRef.current) {
@@ -487,7 +572,7 @@ export const SnakeGame: React.FC<GameProps> = ({
         clearInterval(gameLoopRef.current)
       }
     }
-  }, [isPlaying, gameStarted, gameLoop])
+  }, [isPlaying, gameStarted, gameEnded, gameLoop])
 
   // Initialize game
   useEffect(() => {
@@ -535,6 +620,8 @@ export const SnakeGame: React.FC<GameProps> = ({
 
     // Draw snakes
     snakes.forEach(snake => {
+      if (snake.isDead) return // Don't draw dead snakes
+
       snake.positions.forEach((pos, index) => {
         const screenX = pos.x * CELL_SIZE - camera.x
         const screenY = pos.y * CELL_SIZE - camera.y
@@ -560,7 +647,18 @@ export const SnakeGame: React.FC<GameProps> = ({
         }
       })
     })
-  }, [snakes, food, camera])
+
+    // Draw game end overlay
+    if (gameEnded) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'
+      ctx.fillRect(0, 0, VIEWPORT_SIZE, VIEWPORT_SIZE)
+      
+      ctx.fillStyle = 'white'
+      ctx.font = 'bold 24px Arial'
+      ctx.textAlign = 'center'
+      ctx.fillText('Game Over!', VIEWPORT_SIZE / 2, VIEWPORT_SIZE / 2)
+    }
+  }, [snakes, food, camera, gameEnded])
 
   // Mini-map drawing
   useEffect(() => {
@@ -589,7 +687,7 @@ export const SnakeGame: React.FC<GameProps> = ({
 
     // Draw snakes as dots
     snakes.forEach(snake => {
-      if (snake.positions.length > 0) {
+      if (snake.positions.length > 0 && !snake.isDead) {
         const head = snake.positions[0]
         ctx.fillStyle = snake.color
         ctx.beginPath()
@@ -607,6 +705,13 @@ export const SnakeGame: React.FC<GameProps> = ({
 
   return (
     <div className="snake-game-container">
+      {/* Timer display */}
+      {!isBot && !gameEnded && (
+        <div className="game-timer-display">
+          Time: {formatTime(timeLeft)}
+        </div>
+      )}
+
       <div className="game-viewport-container">
         {/* Main game canvas */}
         <canvas
@@ -636,7 +741,7 @@ export const SnakeGame: React.FC<GameProps> = ({
       </div>
 
       {/* Joystick controls */}
-      {!isBot && (
+      {!isBot && !gameEnded && (
         <div className="joystick-container">
           <div 
             ref={joystickRef}

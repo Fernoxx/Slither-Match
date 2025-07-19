@@ -152,6 +152,103 @@
     gap: 1rem;
   }
 
+  .game-timer-display {
+    background: rgba(139, 92, 246, 0.1);
+    border: 2px solid rgba(139, 92, 246, 0.3);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    color: #6b21a8;
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .game-result-banner {
+    background: white;
+    border: 2px solid #e5e5e5;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .game-result-banner.winner {
+    border-color: #22c55e;
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  }
+
+  .game-result-banner.loser {
+    border-color: #ef4444;
+    background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+  }
+
+  .result-content {
+    text-align: center;
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: #1a1a1a;
+  }
+
+  .game-viewport-container {
+    position: relative;
+    display: inline-block;
+  }
+
+  .mini-map {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 4px;
+    padding: 2px;
+  }
+
+  .joystick-container {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+  }
+
+  .joystick-base {
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .joystick-knob {
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+  }
+
+  /* Mobile optimizations */
+  @media (max-width: 768px) {
+    .joystick-container {
+      bottom: 20px;
+      left: 30px;
+      transform: none;
+    }
+
+    .mini-map {
+      top: 5px;
+      right: 5px;
+    }
+
+    .game-viewport-container canvas {
+      max-width: 90vw;
+      max-height: 90vw;
+    }
+  }
+
   .back-btn {
     background: #6b7280;
     color: white;

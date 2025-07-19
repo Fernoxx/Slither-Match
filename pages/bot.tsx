@@ -12,6 +12,7 @@ export default function BotLobby() {
   const [countdown, setCountdown] = useState(3)
   const [score, setScore] = useState(0)
   const [gameOver, setGameOver] = useState(false)
+  const [gameResult, setGameResult] = useState<{ isWinner: boolean, finalScore: number } | null>(null)
 
   useEffect(() => {
     if (matchStarted && countdown > 0) {
@@ -24,9 +25,16 @@ export default function BotLobby() {
     setMatchStarted(true)
     setScore(0)
     setGameOver(false)
+    setGameResult(null)
   }
 
   const handleGameOver = () => {
+    setGameOver(true)
+    setMatchStarted(false)
+  }
+
+  const handleGameWin = (finalScore: number, isWinner: boolean) => {
+    setGameResult({ isWinner, finalScore })
     setGameOver(true)
     setMatchStarted(false)
   }
@@ -40,6 +48,7 @@ export default function BotLobby() {
     setCountdown(3)
     setScore(0)
     setGameOver(false)
+    setGameResult(null)
     handleStartGame()
   }
 
@@ -133,6 +142,7 @@ export default function BotLobby() {
                       isBot={false}
                       onScoreChange={handleScoreChange}
                       onGameOver={handleGameOver}
+                      onGameWin={handleGameWin}
                     />
                   </div>
                 </div>
@@ -141,16 +151,35 @@ export default function BotLobby() {
               {gameOver && (
                 <div className="space-y-6">
                   <div className="p-6 bg-purple-50 border border-purple-200 rounded-lg">
-                    <div className="text-2xl font-bold text-purple-800 mb-2">
-                      🏆 Game Over!
-                    </div>
-                    <div className="text-3xl font-bold text-purple-900">
-                      Final Score: {score}
-                    </div>
+                    {gameResult?.isWinner ? (
+                      <div>
+                        <div className="text-2xl font-bold text-green-600 mb-2">
+                          🏆 You Won!
+                        </div>
+                        <div className="text-3xl font-bold text-purple-900">
+                          Final Score: {gameResult.finalScore}
+                        </div>
+                        <div className="text-green-700 mt-2">
+                          You defeated all the bots!
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="text-2xl font-bold text-purple-800 mb-2">
+                          🎮 Game Over!
+                        </div>
+                        <div className="text-3xl font-bold text-purple-900">
+                          Final Score: {gameResult?.finalScore || score}
+                        </div>
+                        <div className="text-purple-700 mt-2">
+                          {gameResult?.finalScore ? 'Time\'s up!' : 'You got eaten!'}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
                   <a
-                    href={`https://warpcast.com/~/compose?text=I%20just%20scored%20${score}%20points%20in%20a%20SlitherMatch%20Bot%20lobby!%20🎮%0APlay%20at%20slithermatch.xyz`}
+                    href={`https://warpcast.com/~/compose?text=I%20just%20scored%20${gameResult?.finalScore || score}%20points%20in%20a%20SlitherMatch%20Bot%20lobby!%20🎮%0APlay%20at%20slithermatch.xyz`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="game-button text-lg px-8 py-4 inline-block"
@@ -206,7 +235,15 @@ export default function BotLobby() {
             </div>
             <div className="rule-item">
               <span className="rule-emoji">🎮</span>
-              <span>Use arrow keys to move</span>
+              <span>Use joystick to move</span>
+            </div>
+            <div className="rule-item">
+              <span className="rule-emoji">⏰</span>
+              <span>3 minute time limit</span>
+            </div>
+            <div className="rule-item">
+              <span className="rule-emoji">🏆</span>
+              <span>Last snake alive wins</span>
             </div>
           </div>
         </div>
