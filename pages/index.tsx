@@ -186,17 +186,34 @@ export default function Home() {
             color: white;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             padding: 20px;
+            position: relative;
+            overflow: hidden;
+          }
+
+          .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+              radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.2) 0%, transparent 50%),
+              radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.2) 0%, transparent 50%),
+              radial-gradient(circle at 40% 80%, rgba(99, 102, 241, 0.2) 0%, transparent 50%);
+            pointer-events: none;
           }
 
           .header {
             text-align: center;
             margin-bottom: 30px;
+            z-index: 1;
           }
 
           .header h1 {
             font-size: 3rem;
             margin: 0;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
           }
 
           .subtitle {
@@ -211,6 +228,7 @@ export default function Home() {
             flex-wrap: wrap;
             justify-content: center;
             margin-bottom: 30px;
+            z-index: 1;
           }
 
           .bot-lobby-btn, .paid-lobby-btn {
@@ -225,23 +243,23 @@ export default function Home() {
           }
 
           .paid-lobby-btn {
-            background: #f59e0b;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
             color: white;
           }
 
           .paid-lobby-btn:hover {
-            background: #d97706;
+            background: linear-gradient(135deg, #d97706, #b45309);
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
           }
 
           .bot-lobby-btn {
-            background: #4ade80;
+            background: linear-gradient(135deg, #4ade80, #22c55e);
             color: white;
           }
 
           .bot-lobby-btn:hover {
-            background: #22c55e;
+            background: linear-gradient(135deg, #22c55e, #16a34a);
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(74, 222, 128, 0.4);
           }
@@ -254,6 +272,7 @@ export default function Home() {
             margin-bottom: 30px;
             text-align: center;
             border: 1px solid rgba(255,255,255,0.2);
+            z-index: 1;
           }
 
           .game-rules h3 {
@@ -279,10 +298,16 @@ export default function Home() {
             width: 444px;
             height: 444px;
             border: none;
-            border-radius: 12px;
+            border-radius: 20px;
             overflow: hidden;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            background: white;
+            box-shadow: 
+              0 20px 60px rgba(0, 0, 0, 0.3),
+              0 0 40px rgba(139, 92, 246, 0.2),
+              inset 0 0 20px rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            z-index: 1;
           }
 
           @media (max-width: 768px) {
@@ -306,6 +331,7 @@ export default function Home() {
     )
   }
 
+  // Bot lobby view - keep existing functionality
   if (currentView === 'bot-lobby') {
     return (
       <div className="game-container">
@@ -381,7 +407,7 @@ export default function Home() {
 
           .game-header h2 {
             margin: 0;
-            color: #4ade80;
+            color: white;
           }
 
           .back-btn {
@@ -439,11 +465,11 @@ export default function Home() {
           }
 
           .game-end-modal {
-            background: #2a2a2a;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(20px);
             border-radius: 16px;
             padding: 30px;
             text-align: center;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
             max-width: 400px;
             width: 90%;
           }
@@ -494,6 +520,7 @@ export default function Home() {
     )
   }
 
+  // Paid lobby view - keep existing functionality
   if (currentView === 'paid-lobby') {
     return (
       <div className="game-container">
@@ -591,36 +618,35 @@ export default function Home() {
 
           .game-header h2 {
             margin: 0;
-            color: #ffffff;
+            color: white;
           }
 
           .back-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
             color: white;
             padding: 10px 20px;
-            border-radius: 12px;
+            border-radius: 8px;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
           }
 
           .back-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(255,255,255,0.2);
           }
 
           .wallet-connect, .lobby-content, .game-over {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255,255,255,0.1);
             backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 40px;
-            margin-bottom: 30px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 20px;
             text-align: center;
           }
 
           .connect-desc, .lobby-desc {
-            color: #ffffff;
-            font-size: 1.2rem;
+            color: white;
+            font-size: 1.1rem;
             margin-bottom: 20px;
           }
 
@@ -628,55 +654,40 @@ export default function Home() {
             background: #10b981;
             color: white;
             border: none;
-            padding: 15px 30px;
-            border-radius: 16px;
+            padding: 12px 24px;
+            border-radius: 8px;
             font-weight: bold;
             cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 1.1rem;
-            margin: 10px;
+            transition: all 0.2s ease;
           }
 
           .connect-btn:hover, .share-btn:hover {
             background: #059669;
-            transform: translateY(-3px);
           }
 
           .player-count, .wallet-info {
             color: #fbbf24;
-            font-size: 1.1rem;
             font-weight: bold;
             margin: 10px 0;
           }
 
-          .countdown, .waiting {
-            margin: 20px 0;
-          }
-
           .countdown-text, .waiting-text {
             color: #fbbf24;
-            font-size: 1.5rem;
+            font-size: 1.3rem;
             font-weight: bold;
-            animation: pulse 1s ease-in-out infinite;
           }
 
           .final-score {
             color: #10b981;
-            font-size: 2rem;
+            font-size: 1.8rem;
             font-weight: bold;
             margin-bottom: 15px;
           }
 
           .score-text {
-            color: #ffffff;
-            font-size: 1.3rem;
-            font-weight: bold;
+            color: white;
+            font-size: 1.2rem;
             margin-bottom: 20px;
-          }
-
-          @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
           }
         `}</style>
       </div>
