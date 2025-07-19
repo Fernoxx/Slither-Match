@@ -168,6 +168,7 @@ export default function Home() {
             isPlaying={true}
             isBot={true} 
             isPreview={true}
+            isPaidLobby={false}
             onScoreChange={() => {}}
             onGameOver={() => {}}
             onGameWin={() => {}}
@@ -327,6 +328,7 @@ export default function Home() {
             isPlaying={true}
             isBot={false}
             isPreview={false}
+            isPaidLobby={false}
             onScoreChange={setGameScore}
             onGameOver={(score) => {
               setGameScore(score)
@@ -522,6 +524,7 @@ export default function Home() {
             isPlaying={true}
             isBot={false} 
             isPreview={false}
+            isPaidLobby={true}
             onScoreChange={setGameScore}
             onGameOver={(score) => handleGameEnd(score, false)}
             onGameWin={(score) => handleGameEnd(score, true)}

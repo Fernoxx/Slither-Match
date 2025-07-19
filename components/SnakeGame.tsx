@@ -7,6 +7,7 @@ interface GameProps {
   onGameOver?: (score: number) => void
   onGameWin?: (finalScore: number, isWinner: boolean) => void
   isPreview?: boolean // New prop for homepage preview
+  isPaidLobby?: boolean // New prop to determine world size
 }
 
 interface Position {
@@ -44,9 +45,8 @@ interface JoystickState {
   targetAngle: number | null
 }
 
-// Game constants
-const WORLD_SIZE = 1332 // 3x larger world (444 * 3)
-const VIEWPORT_SIZE = 444 // Game box size
+// Static game constants
+const VIEWPORT_SIZE = 444 // Game box size remains the same
 const GAME_SPEED = 60 // 60 FPS
 const GAME_DURATION = 180 // 3 minutes in seconds
 const WALLS_WIDTH = 10 // Wall thickness
@@ -63,20 +63,25 @@ const KNOB_SIZE = 30
 
 // Food constants
 const FOOD_COLORS = ['#ef4444', '#22c55e', '#8b5cf6']
-const FOOD_COUNT = 100
 const FOOD_RADIUS = 3
 
 export const SnakeGame: React.FC<GameProps> = ({ 
-  isPlaying, 
-  isBot = false, 
+  isPlaying,
+  isBot = false,
   onScoreChange, 
   onGameOver,
   onGameWin,
-  isPreview = false // Default to false
+  isPreview = false, // Default to false
+  isPaidLobby = false // Default to false
 }) => {
+  // Dynamic game constants based on game mode
+  const WORLD_SIZE = isPaidLobby ? 1332 : 2000 // Smaller for paid lobby (5 players), larger for bot/preview (10 snakes)
+  const BOT_COUNT = isPaidLobby ? 4 : 9 // 4 bots + player = 5 total for paid, 9 bots + player = 10 for bot lobby
+  const FOOD_COUNT = isPaidLobby ? 80 : 150 // Fewer food for smaller paid lobby world
+
+  // Refs and state
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const miniMapRef = useRef<HTMLCanvasElement>(null)
-  const joystickRef = useRef<HTMLDivElement>(null)
   const gameLoopRef = useRef<number | null>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   
@@ -133,7 +138,28 @@ export const SnakeGame: React.FC<GameProps> = ({
     if (snakeId === 'bot2') return EYE_STYLES.BOT3
     if (snakeId === 'bot3') return EYE_STYLES.BOT4
     if (snakeId === 'bot4') return EYE_STYLES.BOT5
+    // For additional bots (bot5-bot8), cycle through the eye styles
+    if (snakeId === 'bot5') return EYE_STYLES.BOT1
+    if (snakeId === 'bot6') return EYE_STYLES.BOT2
+    if (snakeId === 'bot7') return EYE_STYLES.BOT3
+    if (snakeId === 'bot8') return EYE_STYLES.BOT4
     return EYE_STYLES.PLAYER
+  }, [])
+
+  // Get snake color based on ID
+  const getSnakeColor = useCallback((snakeId: string): string => {
+    if (snakeId === 'player') return COLORS.PLAYER
+    if (snakeId === 'bot0') return COLORS.BOT1
+    if (snakeId === 'bot1') return COLORS.BOT2
+    if (snakeId === 'bot2') return COLORS.BOT3
+    if (snakeId === 'bot3') return COLORS.BOT4
+    if (snakeId === 'bot4') return COLORS.BOT5
+    // For additional bots (bot5-bot8), cycle through the colors
+    if (snakeId === 'bot5') return COLORS.BOT1
+    if (snakeId === 'bot6') return COLORS.BOT2
+    if (snakeId === 'bot7') return COLORS.BOT3
+    if (snakeId === 'bot8') return COLORS.BOT4
+    return COLORS.PLAYER // Fallback
   }, [])
 
   // Draw snake eyes based on style - MADE MUCH LARGER AND MORE VISIBLE
@@ -324,7 +350,7 @@ export const SnakeGame: React.FC<GameProps> = ({
       x: Math.random() * (WORLD_SIZE - 2 * wallMargin) + wallMargin,
       y: Math.random() * (WORLD_SIZE - 2 * wallMargin) + wallMargin
     }
-  }, [])
+  }, [WORLD_SIZE])
 
   // Generate food
   const generateFood = useCallback((): Food => {
@@ -387,23 +413,27 @@ export const SnakeGame: React.FC<GameProps> = ({
       })
     }
 
-    // Bot snakes
-    const botColors = [COLORS.BOT1, COLORS.BOT2, COLORS.BOT3, COLORS.BOT4, COLORS.BOT5]
-    const numBots = isBot ? 5 : (isPreview ? 3 : 4) // Fewer bots in preview
-    
-    for (let i = 0; i < numBots; i++) {
+    // Generate bot snakes
+    const bots: Snake[] = []
+    for (let i = 0; i < BOT_COUNT; i++) {
       const startPos = generateRandomPosition()
-      initialSnakes.push({
+      const segments = createSnakeSegments(startPos, 5)
+      
+      bots.push({
         id: `bot${i}`,
-        segments: createSnakeSegments(startPos, 4),
-        angle: Math.random() * Math.PI * 2,
-        speed: SNAKE_SPEED + Math.random() * 0.3, // Reduced randomness
-        color: botColors[i],
-        score: Math.floor(Math.random() * 50), // Give bots some initial score for preview
+        isPlayer: false,
+        segments,
+        color: getSnakeColor(`bot${i}`),
+        score: isPreview ? Math.floor(Math.random() * 50) + 10 : 0,
+        speed: SNAKE_SPEED + Math.random() * 0.3,
+        angle: Math.random() * 2 * Math.PI,
         radius: BASE_SNAKE_RADIUS + (isPreview ? Math.floor(Math.random() * 6) : 0),
         isDead: false
       })
     }
+
+    // Add bots to initial snakes
+    initialSnakes.push(...bots)
 
     setSnakes(initialSnakes)
 
@@ -417,7 +447,7 @@ export const SnakeGame: React.FC<GameProps> = ({
     setGameStarted(true)
     setGameEnded(false)
     setTimeLeft(GAME_DURATION)
-  }, [isBot, isPreview, generateRandomPosition, generateFood, createSnakeSegments])
+  }, [isBot, isPreview, generateRandomPosition, generateFood, createSnakeSegments, getSnakeColor])
 
   // Smooth angle interpolation
   const interpolateAngle = useCallback((current: number, target: number, factor: number): number => {
@@ -544,7 +574,7 @@ export const SnakeGame: React.FC<GameProps> = ({
         y: prev.y + (targetY - prev.y) * 0.1
       }))
     }
-  }, [isPreview])
+  }, [isPreview, WORLD_SIZE])
 
   // AI for bot snakes
   const updateBotAngle = useCallback((snake: Snake, allSnakes: Snake[], allFood: Food[]): number => {
@@ -606,7 +636,7 @@ export const SnakeGame: React.FC<GameProps> = ({
     }
 
     return { newFood, points }
-  }, [generateFood])
+  }, [generateFood, FOOD_COUNT])
 
   // Check snake collision - MUCH more forgiving to prevent random deaths
   const checkSnakeCollision = useCallback((snake: Snake, allSnakes: Snake[]): boolean => {
