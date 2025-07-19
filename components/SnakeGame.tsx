@@ -45,15 +45,15 @@ interface JoystickState {
 }
 
 // Game constants
-const VIEWPORT_SIZE = 400
-const WORLD_SIZE = VIEWPORT_SIZE * 3 // 3x larger world
+const WORLD_SIZE = 2400 // 3x larger world
+const VIEWPORT_SIZE = 800
 const GAME_SPEED = 60 // 60 FPS
-const GAME_DURATION = 180 // 3 minutes in seconds
+const WALLS_WIDTH = 10 // Wall thickness
 
-// Snake constants
-const BASE_SNAKE_RADIUS = 8 // Base snake thickness
-const MAX_SNAKE_RADIUS = 20 // Maximum snake thickness (1.5cm equivalent)
-const SNAKE_SPEED = 1.5 // Reduced from 2 to 1.5 - slower movement
+// Snake constants - MUCH slower and bigger
+const BASE_SNAKE_RADIUS = 12 // Increased from 8 to 12 - bigger base size
+const MAX_SNAKE_RADIUS = 28 // Increased from 20 to 28 - much bigger max size
+const SNAKE_SPEED = 0.8 // Reduced from 1.5 to 0.8 - much slower movement
 const SEGMENT_SPACING = 8 // Increased from 6 to 8 - more space between segments
 
 // Joystick constants
@@ -61,6 +61,7 @@ const JOYSTICK_SIZE = 80
 const KNOB_SIZE = 30
 
 // Food constants
+const FOOD_COLORS = ['#ef4444', '#22c55e', '#8b5cf6']
 const FOOD_COUNT = 100
 const FOOD_RADIUS = 3
 
@@ -291,9 +292,9 @@ export const SnakeGame: React.FC<GameProps> = ({
     }
   }, [generateRandomPosition])
 
-  // Calculate snake radius based on score
+  // Calculate snake radius based on score - more gradual growth
   const calculateSnakeRadius = useCallback((score: number): number => {
-    const radiusIncrease = Math.floor(score / 30) * 2
+    const radiusIncrease = Math.floor(score / 20) * 1.5 // More gradual growth (was 30/2)
     return Math.min(BASE_SNAKE_RADIUS + radiusIncrease, MAX_SNAKE_RADIUS)
   }, [])
 
@@ -393,18 +394,22 @@ export const SnakeGame: React.FC<GameProps> = ({
       y: head.y + Math.sin(newSnake.angle) * snake.speed
     }
 
-    // Check wall collision - die if hitting boundaries
-    if (newHead.x < snake.radius || newHead.x > WORLD_SIZE - snake.radius || 
-        newHead.y < snake.radius || newHead.y > WORLD_SIZE - snake.radius) {
+    // Check wall collision - die if hitting boundaries (with buffer to prevent false positives)
+    const wallBuffer = 2 // Small buffer to prevent false wall collisions
+    if (newHead.x < snake.radius + wallBuffer || 
+        newHead.x > WORLD_SIZE - snake.radius - wallBuffer || 
+        newHead.y < snake.radius + wallBuffer || 
+        newHead.y > WORLD_SIZE - snake.radius - wallBuffer) {
       // Mark snake as dead if it hits a wall (unless in preview mode)
       if (!isPreview) {
         newSnake.isDead = true
+        console.log(`Snake ${snake.id} hit wall at position:`, newHead.x, newHead.y, 'radius:', snake.radius)
       } else {
         // In preview mode, bounce off walls
-        if (newHead.x < snake.radius) newHead.x = snake.radius
-        if (newHead.x > WORLD_SIZE - snake.radius) newHead.x = WORLD_SIZE - snake.radius
-        if (newHead.y < snake.radius) newHead.y = snake.radius
-        if (newHead.y > WORLD_SIZE - snake.radius) newHead.y = WORLD_SIZE - snake.radius
+        if (newHead.x < snake.radius + wallBuffer) newHead.x = snake.radius + wallBuffer
+        if (newHead.x > WORLD_SIZE - snake.radius - wallBuffer) newHead.x = WORLD_SIZE - snake.radius - wallBuffer
+        if (newHead.y < snake.radius + wallBuffer) newHead.y = snake.radius + wallBuffer
+        if (newHead.y > WORLD_SIZE - snake.radius - wallBuffer) newHead.y = WORLD_SIZE - snake.radius - wallBuffer
         
         // Reverse direction when hitting wall in preview
         newSnake.angle = newSnake.angle + Math.PI + (Math.random() - 0.5) * 0.5
@@ -540,7 +545,7 @@ export const SnakeGame: React.FC<GameProps> = ({
     return { newFood, points }
   }, [generateFood])
 
-  // Check snake collision - FIXED to be much more forgiving
+  // Check snake collision - MUCH more forgiving to prevent random deaths
   const checkSnakeCollision = useCallback((snake: Snake, allSnakes: Snake[]): boolean => {
     if (snake.isDead || isPreview) return false // No collisions in preview mode
 
@@ -550,29 +555,29 @@ export const SnakeGame: React.FC<GameProps> = ({
     for (const otherSnake of allSnakes) {
       if (otherSnake.isDead || otherSnake.id === snake.id) continue
       
-      // Check collision with body segments (skip head and first few segments)
-      for (let i = 3; i < otherSnake.segments.length; i++) { // Start from segment 3 instead of 1
+      // Check collision with body segments (skip head and many segments for forgiveness)
+      for (let i = 5; i < otherSnake.segments.length; i++) { // Increased from 3 to 5
         const segment = otherSnake.segments[i]
         const dx = head.x - segment.x
         const dy = head.y - segment.y
         const distance = Math.sqrt(dx * dx + dy * dy)
         
-        // Much more forgiving collision - need to be very close
-        if (distance < (snake.radius + otherSnake.radius) * 0.7) { // 70% of full radius
+        // VERY forgiving collision - need to be VERY close
+        if (distance < (snake.radius + otherSnake.radius) * 0.5) { // Reduced from 0.7 to 0.5
           return true
         }
       }
     }
     
     // Check collision with own body (skip many more segments to prevent instant death)
-    for (let i = 8; i < snake.segments.length; i++) { // Increased from 4 to 8
+    for (let i = 12; i < snake.segments.length; i++) { // Increased from 8 to 12
       const segment = snake.segments[i]
       const dx = head.x - segment.x
       const dy = head.y - segment.y
       const distance = Math.sqrt(dx * dx + dy * dy)
       
-      // Very forgiving self-collision
-      if (distance < snake.radius * 0.5) { // Only 50% of radius
+      // EXTREMELY forgiving self-collision
+      if (distance < snake.radius * 0.3) { // Reduced from 0.5 to 0.3
         return true
       }
     }
@@ -676,7 +681,7 @@ export const SnakeGame: React.FC<GameProps> = ({
     }
     
     // Calculate target angle for snake movement
-    const targetAngle = distance > 15 ? Math.atan2(deltaY, deltaX) : null // Increased deadzone
+    const targetAngle = distance > 8 ? Math.atan2(deltaY, deltaX) : null // Reduced deadzone from 15 to 8
     
     setJoystick(prev => ({
       ...prev,
@@ -804,6 +809,7 @@ export const SnakeGame: React.FC<GameProps> = ({
         // Check snake collision (only if not preview)
         if (!isPreview && checkSnakeCollision(movedSnake, currentSnakes)) {
           movedSnake.isDead = true
+          console.log(`Snake ${movedSnake.id} died from collision at position:`, movedSnake.segments[0])
         }
 
         return movedSnake
