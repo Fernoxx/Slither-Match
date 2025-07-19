@@ -466,24 +466,22 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
     return targetAngle + randomOffset
   }, [])
 
-  // Fixed joystick handlers using refs to avoid stale closures
+  // Improved joystick handlers with global event listening for smooth control
+  const joystickContainerRef = useRef<HTMLDivElement>(null)
+
   const handleJoystickStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault()
+    e.stopPropagation()
     joystickRef.current.isDragging = true
     setJoystick(prev => ({ ...prev, isDragging: true }))
   }, [])
 
-  const handleJoystickMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    if (!joystickRef.current.isDragging) return
+  const updateJoystickPosition = useCallback((clientX: number, clientY: number) => {
+    if (!joystickContainerRef.current) return
     
-    e.preventDefault()
-    
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    const rect = joystickContainerRef.current.getBoundingClientRect()
     const centerX = rect.left + rect.width / 2
     const centerY = rect.top + rect.height / 2
-    
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
     
     const deltaX = clientX - centerX
     const deltaY = clientY - centerY
@@ -498,8 +496,8 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
       knobY = (deltaY / distance) * maxDistance
     }
 
-    // Calculate target angle for snake movement
-    const targetAngle = distance > 8 ? Math.atan2(deltaY, deltaX) : null
+    // Calculate target angle for snake movement with smaller deadzone for better responsiveness
+    const targetAngle = distance > 5 ? Math.atan2(deltaY, deltaX) : null
     
     joystickRef.current.knobPosition = { x: knobX, y: knobY }
     joystickRef.current.targetAngle = targetAngle
@@ -510,6 +508,18 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
       targetAngle
     }))
   }, [])
+
+  const handleJoystickMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    if (!joystickRef.current.isDragging) return
+    
+    e.preventDefault()
+    e.stopPropagation()
+    
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
+    
+    updateJoystickPosition(clientX, clientY)
+  }, [updateJoystickPosition])
 
   const handleJoystickEnd = useCallback(() => {
     joystickRef.current.isDragging = false
@@ -524,6 +534,43 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
     }))
   }, [])
 
+  // Global event listeners for smooth joystick control
+  useEffect(() => {
+    if (isPreview || isBot) return
+
+    const handleGlobalMove = (e: MouseEvent | TouchEvent) => {
+      if (!joystickRef.current.isDragging) return
+      
+      e.preventDefault()
+      
+      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
+      
+      updateJoystickPosition(clientX, clientY)
+    }
+
+    const handleGlobalEnd = () => {
+      if (joystickRef.current.isDragging) {
+        handleJoystickEnd()
+      }
+    }
+
+    // Add global event listeners for smooth dragging
+    document.addEventListener('mousemove', handleGlobalMove, { passive: false })
+    document.addEventListener('mouseup', handleGlobalEnd, { passive: false })
+    document.addEventListener('touchmove', handleGlobalMove, { passive: false })
+    document.addEventListener('touchend', handleGlobalEnd, { passive: false })
+    document.addEventListener('touchcancel', handleGlobalEnd, { passive: false })
+
+    return () => {
+      document.removeEventListener('mousemove', handleGlobalMove)
+      document.removeEventListener('mouseup', handleGlobalEnd)
+      document.removeEventListener('touchmove', handleGlobalMove)
+      document.removeEventListener('touchend', handleGlobalEnd)
+      document.removeEventListener('touchcancel', handleGlobalEnd)
+    }
+  }, [isPreview, isBot, updateJoystickPosition, handleJoystickEnd])
+
   // Game loop
   useEffect(() => {
     if (!gameStarted || gameEnded) return
@@ -532,10 +579,10 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
       setSnakes(currentSnakes => {
         const updatedSnakes = currentSnakes.map(snake => {
           if (snake.isPlayer) {
-            return moveSnake(snake, joystickRef.current.targetAngle)
+            return moveSnake(snake, joystickRef.current.targetAngle || undefined)
           } else {
             const botTargetAngle = updateBotAI(snake, currentSnakes, food)
-            return moveSnake(snake, botTargetAngle)
+            return moveSnake(snake, botTargetAngle || undefined)
           }
         })
 
@@ -751,17 +798,13 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
           />
         )}
 
-        {/* Joystick - Fixed smooth handling */}
+        {/* Joystick - Smooth responsive handling */}
         {!isPreview && (
           <div 
+            ref={joystickContainerRef}
             className="joystick-container"
             onMouseDown={handleJoystickStart}
-            onMouseMove={handleJoystickMove}
-            onMouseUp={handleJoystickEnd}
-            onMouseLeave={handleJoystickEnd}
             onTouchStart={handleJoystickStart}
-            onTouchMove={handleJoystickMove}
-            onTouchEnd={handleJoystickEnd}
           >
             <div className="joystick-base">
               <div 
@@ -788,11 +831,12 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
           display: flex;
           flex-direction: column;
           align-items: center;
-          background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+          background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
           min-height: 100vh;
           padding: 20px;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           position: relative;
+          overflow: hidden;
         }
 
         .game-container::before {
@@ -803,10 +847,9 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
           right: 0;
           bottom: 0;
           background-image: 
-            linear-gradient(45deg, transparent 25%, rgba(138, 43, 226, 0.05) 25%, rgba(138, 43, 226, 0.05) 50%, transparent 50%),
-            linear-gradient(-45deg, transparent 25%, rgba(138, 43, 226, 0.05) 25%, rgba(138, 43, 226, 0.05) 50%, transparent 50%);
-          background-size: 60px 60px;
-          animation: backgroundMove 20s linear infinite;
+            radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.2) 0%, transparent 50%),
+            radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.2) 0%, transparent 50%),
+            radial-gradient(circle at 40% 80%, rgba(99, 102, 241, 0.2) 0%, transparent 50%);
           pointer-events: none;
         }
 
@@ -857,10 +900,15 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
           position: relative;
           width: ${VIEWPORT_SIZE}px;
           height: ${VIEWPORT_SIZE}px;
-          border: 2px solid rgba(0, 255, 255, 0.6);
-          border-radius: 8px;
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          border-radius: 20px;
           overflow: hidden;
-          box-shadow: 0 0 25px rgba(0, 255, 255, 0.3);
+          box-shadow: 
+            0 20px 60px rgba(0, 0, 0, 0.3),
+            0 0 40px rgba(139, 92, 246, 0.2),
+            inset 0 0 20px rgba(255, 255, 255, 0.1);
+          background: rgba(255, 255, 255, 0.05);
+          backdrop-filter: blur(10px);
           z-index: 1;
         }
 

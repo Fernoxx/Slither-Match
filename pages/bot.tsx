@@ -1,253 +1,130 @@
 import { useEffect, useState } from 'react'
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
 import { injected } from 'wagmi/connectors'
-import { SnakeGame } from '../components/SnakeGame'
+import SnakeGame from '../components/SnakeGame'
 
 export default function BotLobby() {
   const { address, isConnected } = useAccount()
   const { connect } = useConnect()
   const { disconnect } = useDisconnect()
-
-  const [matchStarted, setMatchStarted] = useState(false)
-  const [countdown, setCountdown] = useState(3)
   const [score, setScore] = useState(0)
-  const [gameOver, setGameOver] = useState(false)
-  const [gameResult, setGameResult] = useState<{ isWinner: boolean, finalScore: number } | null>(null)
+  const [gameEnded, setGameEnded] = useState(false)
+  const [gameStarted, setGameStarted] = useState(false)
 
-  useEffect(() => {
-    if (matchStarted && countdown > 0) {
-      const timer = setTimeout(() => setCountdown(prev => prev - 1), 1000)
-      return () => clearTimeout(timer)
-    }
-  }, [matchStarted, countdown])
+  const handleGameOver = (finalScore: number) => {
+    setScore(finalScore)
+    setGameEnded(true)
+  }
 
-  const handleStartGame = () => {
-    setMatchStarted(true)
+  const startNewGame = () => {
+    setGameStarted(true)
+    setGameEnded(false)
     setScore(0)
-    setGameOver(false)
-    setGameResult(null)
   }
 
-  const handleGameOver = () => {
-    setGameOver(true)
-    setMatchStarted(false)
+  const goHome = () => {
+    window.location.href = '/'
   }
 
-  const handleGameWin = (finalScore: number, isWinner: boolean) => {
-    setGameResult({ isWinner, finalScore })
-    setGameOver(true)
-    setMatchStarted(false)
-  }
+  if (gameStarted && !gameEnded) {
+    return (
+      <div className="game-page">
+        <SnakeGame
+          onGameOver={handleGameOver}
+          isBot={false}
+          isPreview={false}
+          isPaidLobby={false}
+        />
+        <button onClick={goHome} className="back-button">
+          ← Back to Menu
+        </button>
 
-  const handleScoreChange = (newScore: number) => {
-    setScore(newScore)
-  }
+        <style jsx>{`
+          .game-page {
+            position: relative;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+          }
 
-  const handlePlayAgain = () => {
-    setMatchStarted(false)
-    setCountdown(3)
-    setScore(0)
-    setGameOver(false)
-    setGameResult(null)
-    handleStartGame()
+          .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, rgba(138, 43, 226, 0.3), rgba(75, 0, 130, 0.3));
+            border: 2px solid #8a2be2;
+            border-radius: 8px;
+            color: #ffffff;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 100;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(138, 43, 226, 0.4);
+          }
+
+          .back-button:hover {
+            background: linear-gradient(135deg, rgba(138, 43, 226, 0.5), rgba(75, 0, 130, 0.5));
+            box-shadow: 0 0 25px rgba(138, 43, 226, 0.6);
+          }
+        `}</style>
+      </div>
+    )
   }
 
   return (
-    <main className="game-container min-h-screen flex flex-col items-center justify-center p-6">
-      <div className="max-w-2xl w-full">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="lobby-title">🤖 Bot Lobby</h1>
-          <p className="text-purple-700 text-lg">
-            Practice against AI opponents
-          </p>
-        </div>
-
-        {/* Main Game Board */}
-        <div className="game-board p-8 text-center">
-          {!isConnected ? (
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
+      <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20 shadow-2xl max-w-md w-full">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-white mb-6">🤖 Bot Lobby</h1>
+          
+          {gameEnded ? (
             <div className="space-y-4">
-              <div className="text-purple-800 font-semibold mb-4">
-                Connect your wallet to start playing
+              <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-4">
+                <h2 className="text-xl font-bold text-green-400 mb-2">Game Over!</h2>
+                <p className="text-white">Final Score: <span className="text-yellow-400 font-bold">{score}</span></p>
               </div>
-              <button 
-                onClick={() => connect({ connector: injected() })} 
-                className="game-button text-lg px-8 py-4"
-              >
-                🔗 Connect Wallet
-              </button>
+              
+              <div className="space-y-3">
+                <button
+                  onClick={startNewGame}
+                  className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105"
+                >
+                  🎮 Play Again
+                </button>
+                
+                <button
+                  onClick={goHome}
+                  className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105"
+                >
+                  🏠 Back to Home
+                </button>
+              </div>
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Connection Status */}
-              <div className="player-info">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-bold">
-                      ✓
-                    </div>
-                    <span className="text-purple-800 font-medium">
-                      {address?.slice(0, 6)}...{address?.slice(-4)}
-                    </span>
-                  </div>
-                  <button 
-                    onClick={() => disconnect()} 
-                    className="text-red-600 hover:text-red-800 font-medium"
-                  >
-                    Disconnect
-                  </button>
-                </div>
+              <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-4">
+                <p className="text-blue-300 text-lg">Practice your snake skills against AI opponents!</p>
               </div>
-
-              {!matchStarted && !gameOver && (
-                <div className="space-y-4">
-                  <div className="text-purple-700 font-medium">
-                    Ready to challenge the bots?
-                  </div>
-                  <button 
-                    onClick={handleStartGame} 
-                    className="game-button text-lg px-8 py-4"
-                  >
-                    🚀 Start Bot Match
-                  </button>
-                </div>
-              )}
-
-              {matchStarted && countdown > 0 && (
-                <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <div className="text-2xl font-bold text-yellow-800 mb-2">
-                    ⏰ Match starts in {countdown}...
-                  </div>
-                  <div className="text-yellow-700">
-                    Get ready to slither!
-                  </div>
-                </div>
-              )}
-
-              {matchStarted && countdown === 0 && !gameOver && (
-                <div className="space-y-4">
-                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="text-xl font-bold text-green-800 mb-2">
-                      🎮 Game Live!
-                    </div>
-                    <div className="text-2xl font-bold text-purple-800">
-                      Score: {score}
-                    </div>
-                  </div>
-                  
-                  {/* Actual Snake Game */}
-                  <div className="flex justify-center">
-                    <SnakeGame 
-                      isPlaying={true}
-                      isBot={false}
-                      onScoreChange={handleScoreChange}
-                      onGameOver={handleGameOver}
-                      onGameWin={handleGameWin}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {gameOver && (
-                <div className="space-y-6">
-                  <div className="p-6 bg-purple-50 border border-purple-200 rounded-lg">
-                    {gameResult?.isWinner ? (
-                      <div>
-                        <div className="text-2xl font-bold text-green-600 mb-2">
-                          🏆 You Won!
-                        </div>
-                        <div className="text-3xl font-bold text-purple-900">
-                          Final Score: {gameResult.finalScore}
-                        </div>
-                        <div className="text-green-700 mt-2">
-                          You defeated all the bots!
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <div className="text-2xl font-bold text-purple-800 mb-2">
-                          🎮 Game Over!
-                        </div>
-                        <div className="text-3xl font-bold text-purple-900">
-                          Final Score: {gameResult?.finalScore || score}
-                        </div>
-                        <div className="text-purple-700 mt-2">
-                          {gameResult?.finalScore ? 'Time\'s up!' : 'You got eaten!'}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <a
-                    href={`https://warpcast.com/~/compose?text=I%20just%20scored%20${gameResult?.finalScore || score}%20points%20in%20a%20SlitherMatch%20Bot%20lobby!%20🎮%0APlay%20at%20slithermatch.xyz`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="game-button text-lg px-8 py-4 inline-block"
-                  >
-                    🎉 Share your score
-                  </a>
-                  
-                  <button 
-                    onClick={handlePlayAgain}
-                    className="game-button text-lg px-8 py-4 ml-4"
-                  >
-                    🔄 Play Again
-                  </button>
-                </div>
-              )}
+              
+              <div className="space-y-3">
+                <button
+                  onClick={startNewGame}
+                  className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105"
+                >
+                  🚀 Start Game
+                </button>
+                
+                <button
+                  onClick={goHome}
+                  className="w-full bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105"
+                >
+                  ← Back to Home
+                </button>
+              </div>
             </div>
           )}
         </div>
-
-        {/* Bot Info */}
-        <div className="game-rules mt-6">
-          <h2 className="text-xl font-bold text-purple-800 mb-4 text-center">
-            Bot Match Info
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="rule-item">
-              <span className="rule-emoji">🤖</span>
-              <span>Play against AI opponents</span>
-            </div>
-            <div className="rule-item">
-              <span className="rule-emoji">⚡</span>
-              <span>Instant match start</span>
-            </div>
-            <div className="rule-item">
-              <span className="rule-emoji">🆓</span>
-              <span>Free to play</span>
-            </div>
-            <div className="rule-item">
-              <span className="rule-emoji">🏋️</span>
-              <span>Perfect for practice</span>
-            </div>
-            <div className="rule-item">
-              <span className="rule-emoji">🔴</span>
-              <span>Red dots = 3 points</span>
-            </div>
-            <div className="rule-item">
-              <span className="rule-emoji">🟢</span>
-              <span>Green dots = 6 points</span>
-            </div>
-            <div className="rule-item">
-              <span className="rule-emoji">🟣</span>
-              <span>Purple dots = 12 points</span>
-            </div>
-            <div className="rule-item">
-              <span className="rule-emoji">🎮</span>
-              <span>Use joystick to move</span>
-            </div>
-            <div className="rule-item">
-              <span className="rule-emoji">⏰</span>
-              <span>3 minute time limit</span>
-            </div>
-            <div className="rule-item">
-              <span className="rule-emoji">🏆</span>
-              <span>Last snake alive wins</span>
-            </div>
-          </div>
-        </div>
       </div>
-    </main>
+    </div>
   )
 }
