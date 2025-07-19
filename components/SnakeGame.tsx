@@ -48,6 +48,7 @@ interface JoystickState {
 const WORLD_SIZE = 2400 // 3x larger world
 const VIEWPORT_SIZE = 800
 const GAME_SPEED = 60 // 60 FPS
+const GAME_DURATION = 180 // 3 minutes in seconds
 const WALLS_WIDTH = 10 // Wall thickness
 
 // Snake constants - MUCH slower and bigger
@@ -484,7 +485,7 @@ export const SnakeGame: React.FC<GameProps> = ({
   }, [])
 
   // AI for bot snakes
-  const updateBotAngle = useCallback((snake: Snake, allFood: Food[]): number => {
+  const updateBotAngle = useCallback((snake: Snake, allSnakes: Snake[], allFood: Food[]): number => {
     if (snake.isDead) return snake.angle
 
     const head = snake.segments[0]
@@ -616,11 +617,13 @@ export const SnakeGame: React.FC<GameProps> = ({
       // Skip some segments to avoid too much food clustering
       if (index % 2 === 0) { // Every other segment
         newFood.push({
-          id: `dead-${deadSnake.id}-${index}-${Date.now()}`,
-          x: segment.x + (Math.random() - 0.5) * 10, // Small random offset
-          y: segment.y + (Math.random() - 0.5) * 10,
+          position: {
+            x: segment.x + (Math.random() - 0.5) * 10, // Small random offset
+            y: segment.y + (Math.random() - 0.5) * 10
+          },
           radius: FOOD_RADIUS + Math.random() * 2,
-          color: FOOD_COLORS[Math.floor(Math.random() * FOOD_COLORS.length)]
+          color: FOOD_COLORS[Math.floor(Math.random() * FOOD_COLORS.length)],
+          points: 5 // Each dead snake food piece gives 5 points
         })
       }
     })
@@ -776,29 +779,32 @@ export const SnakeGame: React.FC<GameProps> = ({
     if (!isPlaying || !gameStarted || (gameEnded && !isPreview)) return
 
     setSnakes(currentSnakes => {
+      // Update snakes and track newly dead snakes for food spawning
+      const newlyDeadSnakes: Snake[] = []
+      
       const newSnakes = currentSnakes.map(snake => {
         if (snake.isDead && !isPreview) return snake // In preview, revive dead snakes
 
         // Revive dead snakes in preview mode
         if (snake.isDead && isPreview) {
           snake.isDead = false
-          snake.segments = createSnakeSegments(generateRandomPosition(), 4)
+          snake.segments = createSnakeSegments(generateRandomPosition(), 5)
         }
 
+        // Move snake
         let targetAngle = undefined
         
         // Update movement direction
         if (snake.isPlayer && !isPreview) {
           targetAngle = joystick.targetAngle || undefined
         } else {
-          targetAngle = updateBotAngle(snake, food)
+          targetAngle = updateBotAngle(snake, currentSnakes, food)
         }
-
-        // Move snake
+        
         const movedSnake = moveSnake(snake, targetAngle)
-
-        // Update camera for player
-        if (snake.isPlayer && !isPreview) {
+        
+        // Update camera if this is the player
+        if (snake.isPlayer) {
           updateCamera(movedSnake.segments[0])
         }
 
@@ -819,12 +825,30 @@ export const SnakeGame: React.FC<GameProps> = ({
 
         // Check snake collision (only if not preview)
         if (!isPreview && checkSnakeCollision(movedSnake, currentSnakes)) {
+          const wasAlive = !movedSnake.isDead
           movedSnake.isDead = true
-          console.log(`Snake ${movedSnake.id} died from collision at position:`, movedSnake.segments[0])
+          
+          // Track newly dead snake for food spawning
+          if (wasAlive) {
+            newlyDeadSnakes.push({ ...movedSnake })
+            console.log(`Snake ${movedSnake.id} died from collision at position:`, movedSnake.segments[0])
+          }
         }
 
         return movedSnake
       })
+
+      // Spawn food from newly dead snakes
+      if (newlyDeadSnakes.length > 0) {
+        const newFoodFromDeadSnakes: Food[] = []
+        newlyDeadSnakes.forEach(deadSnake => {
+          newFoodFromDeadSnakes.push(...spawnFoodFromDeadSnake(deadSnake))
+        })
+        
+        if (newFoodFromDeadSnakes.length > 0) {
+          setFood(currentFood => [...currentFood, ...newFoodFromDeadSnakes])
+        }
+      }
 
       // Check game end conditions (only if not preview)
       if (!isPreview) {
@@ -833,7 +857,7 @@ export const SnakeGame: React.FC<GameProps> = ({
 
       return newSnakes
     })
-  }, [isPlaying, gameStarted, gameEnded, isPreview, joystick.targetAngle, food, moveSnake, updateCamera, updateBotAngle, checkFoodCollision, checkSnakeCollision, onScoreChange, checkGameEnd, createSnakeSegments, generateRandomPosition])
+  }, [isPlaying, gameStarted, gameEnded, isPreview, joystick.targetAngle, food, moveSnake, updateCamera, updateBotAngle, checkFoodCollision, checkSnakeCollision, onScoreChange, checkGameEnd, createSnakeSegments, generateRandomPosition, spawnFoodFromDeadSnake])
 
   // Game loop effect
   useEffect(() => {
