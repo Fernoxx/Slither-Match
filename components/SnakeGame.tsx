@@ -136,11 +136,11 @@ export const SnakeGame: React.FC<GameProps> = ({
     return EYE_STYLES.PLAYER
   }, [])
 
-  // Draw snake eyes based on style
+  // Draw snake eyes based on style - MADE MUCH LARGER AND MORE VISIBLE
   const drawSnakeEyes = useCallback((ctx: CanvasRenderingContext2D, snake: Snake, screenX: number, screenY: number) => {
     const eyeStyle = getEyeStyle(snake.id)
-    const baseEyeSize = snake.radius * 0.15
-    const eyeDistance = snake.radius * 0.4
+    const baseEyeSize = snake.radius * 0.25 // Increased from 0.15 to 0.25 - much bigger eyes
+    const eyeDistance = snake.radius * 0.5   // Increased from 0.4 to 0.5 - spread apart more
     
     // Calculate eye positions
     const leftEyeX = screenX + Math.cos(snake.angle - 0.5) * eyeDistance
@@ -150,13 +150,18 @@ export const SnakeGame: React.FC<GameProps> = ({
 
     switch (eyeStyle) {
       case 'normal': // Player - normal round eyes
+        // White eye background
         ctx.fillStyle = 'white'
+        ctx.strokeStyle = 'black'
+        ctx.lineWidth = 2
         ctx.beginPath()
         ctx.arc(leftEyeX, leftEyeY, baseEyeSize, 0, 2 * Math.PI)
         ctx.fill()
+        ctx.stroke()
         ctx.beginPath()
         ctx.arc(rightEyeX, rightEyeY, baseEyeSize, 0, 2 * Math.PI)
         ctx.fill()
+        ctx.stroke()
         
         // Black pupils
         ctx.fillStyle = 'black'
@@ -170,72 +175,54 @@ export const SnakeGame: React.FC<GameProps> = ({
 
       case 'angry': // Bot1 (Yellow) - angry slanted eyes
         ctx.fillStyle = 'white'
+        ctx.strokeStyle = 'black'
+        ctx.lineWidth = 2
         ctx.beginPath()
-        ctx.ellipse(leftEyeX, leftEyeY, baseEyeSize * 1.2, baseEyeSize * 0.7, snake.angle - 0.3, 0, 2 * Math.PI)
+        ctx.ellipse(leftEyeX, leftEyeY, baseEyeSize * 1.3, baseEyeSize * 0.8, snake.angle - 0.3, 0, 2 * Math.PI)
         ctx.fill()
+        ctx.stroke()
         ctx.beginPath()
-        ctx.ellipse(rightEyeX, rightEyeY, baseEyeSize * 1.2, baseEyeSize * 0.7, snake.angle + 0.3, 0, 2 * Math.PI)
+        ctx.ellipse(rightEyeX, rightEyeY, baseEyeSize * 1.3, baseEyeSize * 0.8, snake.angle + 0.3, 0, 2 * Math.PI)
         ctx.fill()
+        ctx.stroke()
         
         // Red angry pupils
         ctx.fillStyle = '#dc2626'
         ctx.beginPath()
-        ctx.arc(leftEyeX, leftEyeY, baseEyeSize * 0.5, 0, 2 * Math.PI)
+        ctx.arc(leftEyeX, leftEyeY, baseEyeSize * 0.6, 0, 2 * Math.PI)
         ctx.fill()
         ctx.beginPath()
-        ctx.arc(rightEyeX, rightEyeY, baseEyeSize * 0.5, 0, 2 * Math.PI)
+        ctx.arc(rightEyeX, rightEyeY, baseEyeSize * 0.6, 0, 2 * Math.PI)
         ctx.fill()
+        
+        // Angry eyebrows
+        ctx.strokeStyle = '#7f1d1d'
+        ctx.lineWidth = 3
+        ctx.beginPath()
+        ctx.moveTo(leftEyeX - baseEyeSize, leftEyeY - baseEyeSize)
+        ctx.lineTo(leftEyeX + baseEyeSize * 0.5, leftEyeY - baseEyeSize * 0.5)
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.moveTo(rightEyeX + baseEyeSize, rightEyeY - baseEyeSize)
+        ctx.lineTo(rightEyeX - baseEyeSize * 0.5, rightEyeY - baseEyeSize * 0.5)
+        ctx.stroke()
         break
 
       case 'sleepy': // Bot2 (Purple) - half-closed sleepy eyes
         ctx.fillStyle = 'white'
+        ctx.strokeStyle = 'black'
+        ctx.lineWidth = 2
         ctx.beginPath()
         ctx.ellipse(leftEyeX, leftEyeY, baseEyeSize, baseEyeSize * 0.4, 0, 0, 2 * Math.PI)
         ctx.fill()
+        ctx.stroke()
         ctx.beginPath()
         ctx.ellipse(rightEyeX, rightEyeY, baseEyeSize, baseEyeSize * 0.4, 0, 0, 2 * Math.PI)
         ctx.fill()
+        ctx.stroke()
         
         // Small pupils
         ctx.fillStyle = 'black'
-        ctx.beginPath()
-        ctx.arc(leftEyeX, leftEyeY, baseEyeSize * 0.3, 0, 2 * Math.PI)
-        ctx.fill()
-        ctx.beginPath()
-        ctx.arc(rightEyeX, rightEyeY, baseEyeSize * 0.3, 0, 2 * Math.PI)
-        ctx.fill()
-        break
-
-      case 'wide': // Bot3 (Orange) - wide surprised eyes
-        ctx.fillStyle = 'white'
-        ctx.beginPath()
-        ctx.arc(leftEyeX, leftEyeY, baseEyeSize * 1.5, 0, 2 * Math.PI)
-        ctx.fill()
-        ctx.beginPath()
-        ctx.arc(rightEyeX, rightEyeY, baseEyeSize * 1.5, 0, 2 * Math.PI)
-        ctx.fill()
-        
-        // Large pupils
-        ctx.fillStyle = 'black'
-        ctx.beginPath()
-        ctx.arc(leftEyeX, leftEyeY, baseEyeSize * 0.8, 0, 2 * Math.PI)
-        ctx.fill()
-        ctx.beginPath()
-        ctx.arc(rightEyeX, rightEyeY, baseEyeSize * 0.8, 0, 2 * Math.PI)
-        ctx.fill()
-        break
-
-      case 'evil': // Bot4 (Red) - evil red eyes with small pupils
-        ctx.fillStyle = '#fca5a5' // Light red
-        ctx.beginPath()
-        ctx.arc(leftEyeX, leftEyeY, baseEyeSize, 0, 2 * Math.PI)
-        ctx.fill()
-        ctx.beginPath()
-        ctx.arc(rightEyeX, rightEyeY, baseEyeSize, 0, 2 * Math.PI)
-        ctx.fill()
-        
-        // Small dark red pupils
-        ctx.fillStyle = '#7f1d1d'
         ctx.beginPath()
         ctx.arc(leftEyeX, leftEyeY, baseEyeSize * 0.4, 0, 2 * Math.PI)
         ctx.fill()
@@ -244,34 +231,88 @@ export const SnakeGame: React.FC<GameProps> = ({
         ctx.fill()
         break
 
-      case 'crossed': // Bot5 (Green) - cross-eyed silly eyes
+      case 'wide': // Bot3 (Orange) - wide surprised eyes
         ctx.fillStyle = 'white'
+        ctx.strokeStyle = 'black'
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.arc(leftEyeX, leftEyeY, baseEyeSize * 1.6, 0, 2 * Math.PI)
+        ctx.fill()
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.arc(rightEyeX, rightEyeY, baseEyeSize * 1.6, 0, 2 * Math.PI)
+        ctx.fill()
+        ctx.stroke()
+        
+        // Large pupils
+        ctx.fillStyle = 'black'
+        ctx.beginPath()
+        ctx.arc(leftEyeX, leftEyeY, baseEyeSize * 0.9, 0, 2 * Math.PI)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.arc(rightEyeX, rightEyeY, baseEyeSize * 0.9, 0, 2 * Math.PI)
+        ctx.fill()
+        break
+
+      case 'evil': // Bot4 (Red) - evil red eyes with small pupils
+        ctx.fillStyle = '#fca5a5' // Light red
+        ctx.strokeStyle = '#7f1d1d'
+        ctx.lineWidth = 2
         ctx.beginPath()
         ctx.arc(leftEyeX, leftEyeY, baseEyeSize, 0, 2 * Math.PI)
         ctx.fill()
+        ctx.stroke()
         ctx.beginPath()
         ctx.arc(rightEyeX, rightEyeY, baseEyeSize, 0, 2 * Math.PI)
         ctx.fill()
+        ctx.stroke()
+        
+        // Small dark red pupils
+        ctx.fillStyle = '#7f1d1d'
+        ctx.beginPath()
+        ctx.arc(leftEyeX, leftEyeY, baseEyeSize * 0.5, 0, 2 * Math.PI)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.arc(rightEyeX, rightEyeY, baseEyeSize * 0.5, 0, 2 * Math.PI)
+        ctx.fill()
+        break
+
+      case 'crossed': // Bot5 (Green) - cross-eyed silly eyes
+        ctx.fillStyle = 'white'
+        ctx.strokeStyle = 'black'
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.arc(leftEyeX, leftEyeY, baseEyeSize, 0, 2 * Math.PI)
+        ctx.fill()
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.arc(rightEyeX, rightEyeY, baseEyeSize, 0, 2 * Math.PI)
+        ctx.fill()
+        ctx.stroke()
         
         // Cross-eyed pupils (looking towards center)
         ctx.fillStyle = 'black'
         ctx.beginPath()
-        ctx.arc(leftEyeX + baseEyeSize * 0.3, leftEyeY, baseEyeSize * 0.6, 0, 2 * Math.PI)
+        ctx.arc(leftEyeX + baseEyeSize * 0.4, leftEyeY, baseEyeSize * 0.6, 0, 2 * Math.PI)
         ctx.fill()
         ctx.beginPath()
-        ctx.arc(rightEyeX - baseEyeSize * 0.3, rightEyeY, baseEyeSize * 0.6, 0, 2 * Math.PI)
+        ctx.arc(rightEyeX - baseEyeSize * 0.4, rightEyeY, baseEyeSize * 0.6, 0, 2 * Math.PI)
         ctx.fill()
         break
 
       default:
         // Fallback to normal eyes
         ctx.fillStyle = 'white'
+        ctx.strokeStyle = 'black'
+        ctx.lineWidth = 2
         ctx.beginPath()
         ctx.arc(leftEyeX, leftEyeY, baseEyeSize, 0, 2 * Math.PI)
         ctx.fill()
+        ctx.stroke()
         ctx.beginPath()
         ctx.arc(rightEyeX, rightEyeY, baseEyeSize, 0, 2 * Math.PI)
         ctx.fill()
+        ctx.stroke()
         break
     }
   }, [getEyeStyle])
