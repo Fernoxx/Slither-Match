@@ -3,115 +3,11 @@ import { useAccount, useConnect, useDisconnect, useReadContract, useWriteContrac
 import { injected, metaMask, coinbaseWallet } from 'wagmi/connectors'
 import { parseUnits } from 'viem'
 import { slitherMatchABI } from '../lib/slitherMatchABI'
+import { SnakeGame } from '../components/SnakeGame'
 import Link from 'next/link'
 
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`
 const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS as `0x${string}`
-
-// Game board component with dots and snakes
-const GameBoard = ({ isInLobby = false, timeLeft = 180 }: { isInLobby?: boolean, timeLeft?: number }) => {
-  const [snakePositions, setSnakePositions] = useState({
-    blue: { x: 7, y: 8, direction: 'right', length: 3 },
-    orange: { x: 2, y: 12, direction: 'down', length: 4 },
-    green: { x: 17, y: 15, direction: 'left', length: 5 },
-    red: { x: 6, y: 18, direction: 'right', length: 3 }
-  })
-
-  const [dots] = useState([
-    { x: 15, y: 5, color: 'red' },
-    { x: 8, y: 14, color: 'green' },
-    { x: 12, y: 9, color: 'purple' }
-  ])
-
-  useEffect(() => {
-    if (!isInLobby) return
-
-    const interval = setInterval(() => {
-      setSnakePositions(prev => {
-        const updated = { ...prev }
-        Object.keys(updated).forEach(snake => {
-          const s = updated[snake as keyof typeof updated]
-          // Simple movement simulation
-          if (s.direction === 'right') s.x = Math.min(19, s.x + 1)
-          else if (s.direction === 'left') s.x = Math.max(0, s.x - 1)
-          else if (s.direction === 'down') s.y = Math.min(19, s.y + 1)
-          else if (s.direction === 'up') s.y = Math.max(0, s.y - 1)
-          
-          // Change direction occasionally
-          if (Math.random() < 0.1) {
-            s.direction = ['up', 'down', 'left', 'right'][Math.floor(Math.random() * 4)] as any
-          }
-        })
-        return updated
-      })
-    }, 500)
-
-    return () => clearInterval(interval)
-  }, [isInLobby])
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
-
-  return (
-    <div className="game-board-container">
-      <div className="game-board-header">
-        {isInLobby && (
-          <div className="game-timer">
-            Time: {formatTime(timeLeft)}
-          </div>
-        )}
-      </div>
-      <div className="game-grid">
-        {/* Render dots pattern */}
-        {Array.from({ length: 20 }, (_, row) =>
-          Array.from({ length: 20 }, (_, col) => (
-            <div key={`${row}-${col}`} className="grid-dot" />
-          ))
-        )}
-        
-        {/* Render food dots */}
-        {dots.map((dot, index) => (
-          <div
-            key={index}
-            className={`food-dot ${dot.color}`}
-            style={{
-              gridColumn: dot.x + 1,
-              gridRow: dot.y + 1
-            }}
-          />
-        ))}
-
-        {/* Render snakes */}
-        {Object.entries(snakePositions).map(([color, snake]) => (
-          <div key={color}>
-            {/* Snake head */}
-            <div
-              className={`snake-segment ${color} head`}
-              style={{
-                gridColumn: snake.x + 1,
-                gridRow: snake.y + 1
-              }}
-            />
-            {/* Snake body */}
-            {Array.from({ length: snake.length - 1 }, (_, i) => (
-              <div
-                key={i}
-                className={`snake-segment ${color} body`}
-                style={{
-                  gridColumn: Math.max(1, snake.x - i),
-                  gridRow: snake.y + 1
-                }}
-              />
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 export default function Home() {
   const { address, isConnected } = useAccount()
@@ -123,6 +19,7 @@ export default function Home() {
   const [currentLobby, setCurrentLobby] = useState<number | null>(null)
   const [gameTime, setGameTime] = useState(180) // 3 minutes
   const [playersInLobby, setPlayersInLobby] = useState<string[]>([])
+  const [gameScore, setGameScore] = useState(0)
 
   // Read lobby data when in a lobby
   const { data: lobbyPlayers } = useReadContract({
@@ -178,6 +75,19 @@ export default function Home() {
     setCurrentView('menu')
     setCurrentLobby(null)
     setGameTime(180)
+    setGameScore(0)
+  }
+
+  const handleGameOver = () => {
+    // Game over logic
+    alert(`Game Over! Final Score: ${gameScore}`)
+    setCurrentView('menu')
+  }
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
   if (currentView === 'menu') {
@@ -202,7 +112,12 @@ export default function Home() {
 
           {/* Game Preview */}
           <div className="game-preview">
-            <GameBoard />
+            <div className="game-board-container">
+              <div className="game-board-header">
+                <div className="game-timer">Time: 3:00</div>
+              </div>
+              <SnakeGame isPlaying={true} isBot={true} />
+            </div>
           </div>
 
           {/* Bot Lobby Link */}
@@ -245,7 +160,9 @@ export default function Home() {
 
           {/* Game Preview */}
           <div className="lobby-game-preview">
-            <GameBoard isInLobby={false} />
+            <div className="game-board-container">
+              <SnakeGame isPlaying={true} isBot={true} />
+            </div>
           </div>
 
           {/* Action Buttons */}
@@ -283,18 +200,38 @@ export default function Home() {
               <span>Players: {playersInLobby.length}</span>
               <span>•</span>
               <span>Prize: ${playersInLobby.length} USDC</span>
+              <span>•</span>
+              <span>Time: {formatTime(gameTime)}</span>
             </div>
           </div>
 
           {/* Active Game */}
           <div className="active-game">
-            <GameBoard isInLobby={true} timeLeft={gameTime} />
+            <SnakeGame 
+              isPlaying={true} 
+              isBot={false}
+              onScoreChange={setGameScore}
+              onGameOver={handleGameOver}
+            />
+          </div>
+
+          {/* Game Info */}
+          <div className="game-info">
+            <div className="score-display">
+              <span className="score-label">Your Score:</span>
+              <span className="score-value">{gameScore}</span>
+            </div>
+            <div className="game-rules-quick">
+              <div className="rule-item">🔴 Red dots = 3 points</div>
+              <div className="rule-item">🟢 Green dots = 6 points</div>
+              <div className="rule-item">🟣 Purple dots = 12 points</div>
+            </div>
           </div>
 
           {/* Game Controls */}
           <div className="game-controls">
             <div className="control-instructions">
-              Use arrow keys or swipe to control your snake
+              Use arrow keys to control your snake
             </div>
             <button onClick={handleBackToMenu} className="leave-game-btn">
               Leave Game

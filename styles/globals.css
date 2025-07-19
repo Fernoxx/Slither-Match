@@ -127,7 +127,7 @@
     border-radius: 12px;
     padding: 1rem;
     width: 100%;
-    max-width: 400px;
+    max-width: 450px;
     margin: 0 auto;
     position: relative;
   }
@@ -145,82 +145,11 @@
     font-size: 1rem;
   }
 
-  .game-grid {
-    display: grid;
-    grid-template-columns: repeat(20, 1fr);
-    grid-template-rows: repeat(20, 1fr);
-    gap: 1px;
-    background: #f8f8f8;
-    border-radius: 8px;
-    padding: 8px;
-    aspect-ratio: 1;
-    position: relative;
-  }
-
-  .grid-dot {
-    width: 100%;
-    height: 100%;
-    background: #f0f0f0;
-    position: relative;
-  }
-
-  .grid-dot::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 2px;
-    height: 2px;
-    background: #ccc;
-    border-radius: 50%;
-  }
-
-  .food-dot {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    z-index: 10;
-  }
-
-  .food-dot.red {
-    background: #ef4444;
-  }
-
-  .food-dot.green {
-    background: #22c55e;
-  }
-
-  .food-dot.purple {
-    background: #8b5cf6;
-  }
-
-  .snake-segment {
-    width: 100%;
-    height: 100%;
-    border-radius: 4px;
-    z-index: 5;
-  }
-
-  .snake-segment.blue {
-    background: #3b82f6;
-  }
-
-  .snake-segment.orange {
-    background: #f97316;
-  }
-
-  .snake-segment.green {
-    background: #22c55e;
-  }
-
-  .snake-segment.red {
-    background: #ef4444;
-  }
-
-  .snake-segment.head {
-    border-radius: 50%;
-    z-index: 6;
+  .snake-game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
   }
 
   .back-btn {
@@ -359,6 +288,52 @@
 
   .active-game {
     margin: 1rem 0;
+  }
+
+  .game-info {
+    background: white;
+    border: 2px solid #e5e5e5;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 1rem 0;
+  }
+
+  .score-display {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e5e5;
+  }
+
+  .score-label {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #6b7280;
+  }
+
+  .score-value {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #8b5cf6;
+    text-shadow: 0 2px 4px rgba(139, 92, 246, 0.3);
+  }
+
+  .game-rules-quick {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.5rem;
+  }
+
+  .game-rules-quick .rule-item {
+    font-size: 0.9rem;
+    padding: 0.25rem;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .game-controls {
