@@ -1112,20 +1112,33 @@ export const SnakeGame: React.FC<GameProps> = ({
         
         <style jsx>{`
           .loading-container {
-            width: 100vw;
+            width: 100%;
             height: 100vh;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
             display: flex;
             align-items: center;
             justify-content: center;
-            position: fixed;
+            position: relative;
+          }
+
+          .loading-container::before {
+            content: '';
+            position: absolute;
             top: 0;
             left: 0;
-            z-index: 1000;
+            right: 0;
+            bottom: 0;
+            background-image: 
+              linear-gradient(45deg, transparent 25%, rgba(138, 43, 226, 0.1) 25%, rgba(138, 43, 226, 0.1) 50%, transparent 50%),
+              linear-gradient(-45deg, transparent 25%, rgba(138, 43, 226, 0.1) 25%, rgba(138, 43, 226, 0.1) 50%, transparent 50%);
+            background-size: 60px 60px;
+            animation: backgroundMove 20s linear infinite;
+            pointer-events: none;
           }
 
           .loading-content {
             text-align: center;
+            z-index: 1;
           }
 
           .loading-snake {
@@ -1159,6 +1172,11 @@ export const SnakeGame: React.FC<GameProps> = ({
             animation: glow 2s ease-in-out infinite alternate;
           }
 
+          @keyframes backgroundMove {
+            0% { transform: translateX(0) translateY(0); }
+            100% { transform: translateX(-60px) translateY(-60px); }
+          }
+
           @keyframes rotateSnake {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
@@ -1185,87 +1203,85 @@ export const SnakeGame: React.FC<GameProps> = ({
   }
 
   return (
-    <div className="game-wrapper">
-      <div className="neon-background">
-        {/* Game Live and Score - Centered at top */}
-        <div className="top-ui">
-          <div className="game-live">🎮 Game Live!</div>
-          <div className="main-score">Score: {playerScore}</div>
+    <div className="game-container">
+      {/* Top Status */}
+      <div className="top-status">
+        <div className="game-live">🎮 Game Live!</div>
+        <div className="score-large">Score: {playerScore}</div>
+      </div>
+
+      {/* Timer (only in actual game, not preview) */}
+      {!isPreview && (
+        <div className="timer-box">
+          Time: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
         </div>
+      )}
 
-        {/* Timer - Centered below score */}
+      {/* Main Game Area */}
+      <div className="game-area">
+        <canvas
+          ref={canvasRef}
+          width={VIEWPORT_SIZE}
+          height={VIEWPORT_SIZE}
+          className="main-canvas"
+        />
+        
+        {/* Mini-map (only in actual game) */}
         {!isPreview && (
-          <div className="timer-container">
-            <div className="timer-display">
-              Time: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
-            </div>
-          </div>
-        )}
-
-        {/* Game Canvas Container */}
-        <div className="game-box">
           <canvas
-            ref={canvasRef}
-            width={VIEWPORT_SIZE}
-            height={VIEWPORT_SIZE}
-            className="game-canvas"
+            ref={miniMapRef}
+            width={100}
+            height={100}
+            className="mini-map"
           />
-          
-          {/* Mini-map */}
-          {!isPreview && (
-            <canvas
-              ref={miniMapRef}
-              width={100}
-              height={100}
-              className="mini-map"
-            />
-          )}
-
-          {/* Joystick */}
-          {!isPreview && (
-            <div 
-              className="joystick-container"
-              onMouseDown={handleJoystickStart}
-              onMouseMove={handleJoystickMove}
-              onMouseUp={handleJoystickEnd}
-              onTouchStart={handleJoystickStart}
-              onTouchMove={handleJoystickMove}
-              onTouchEnd={handleJoystickEnd}
-            >
-              <div className="joystick-base">
-                <div 
-                  className="joystick-knob"
-                  style={{
-                    transform: `translate(${joystick.knobPosition.x}px, ${joystick.knobPosition.y}px)`
-                  }}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Bottom Instructions and Score */}
-        {!isPreview && (
-          <div className="bottom-ui">
-            <div className="instructions">Use joystick to control your snake</div>
-            <div className="bottom-score">Score: {playerScore}</div>
-          </div>
         )}
       </div>
 
+      {/* Bottom Control Instructions */}
+      <div className="control-text">Use joystick to control your snake</div>
+
+      {/* Joystick (only in actual game) */}
+      {!isPreview && (
+        <div 
+          className="joystick-area"
+          onMouseDown={handleJoystickStart}
+          onMouseMove={handleJoystickMove}
+          onMouseUp={handleJoystickEnd}
+          onMouseLeave={handleJoystickEnd}
+          onTouchStart={handleJoystickStart}
+          onTouchMove={handleJoystickMove}
+          onTouchEnd={handleJoystickEnd}
+        >
+          <div className="joystick-base">
+            <div 
+              className="joystick-knob"
+              style={{
+                transform: `translate(${joystick.knobPosition.x}px, ${joystick.knobPosition.y}px)`
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Bottom Score */}
+      <div className="bottom-score">Score: {playerScore}</div>
+
       <style jsx>{`
-        .game-wrapper {
-          width: 100vw;
+        .game-container {
+          width: 100%;
           height: 100vh;
+          background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
           display: flex;
+          flex-direction: column;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           position: relative;
           overflow: hidden;
+          padding: 20px;
         }
 
-        .game-wrapper::before {
+        .game-container::before {
           content: '';
           position: absolute;
           top: 0;
@@ -1280,30 +1296,22 @@ export const SnakeGame: React.FC<GameProps> = ({
           pointer-events: none;
         }
 
-        .neon-background {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          z-index: 1;
-          position: relative;
-        }
-
-        .top-ui {
+        .top-status {
           text-align: center;
           margin-bottom: 20px;
+          z-index: 1;
         }
 
         .game-live {
           color: #00ff88;
           font-size: 1.8rem;
           font-weight: bold;
-          text-shadow: 0 0 20px rgba(0, 255, 136, 0.8);
           margin-bottom: 10px;
+          text-shadow: 0 0 20px rgba(0, 255, 136, 0.8);
           animation: pulse 2s ease-in-out infinite;
         }
 
-        .main-score {
+        .score-large {
           color: #00ffff;
           font-size: 2.5rem;
           font-weight: bold;
@@ -1311,11 +1319,7 @@ export const SnakeGame: React.FC<GameProps> = ({
           animation: glow 3s ease-in-out infinite alternate;
         }
 
-        .timer-container {
-          margin-bottom: 30px;
-        }
-
-        .timer-display {
+        .timer-box {
           background: linear-gradient(135deg, rgba(138, 43, 226, 0.4), rgba(75, 0, 130, 0.4));
           border: 2px solid #8a2be2;
           padding: 12px 24px;
@@ -1327,10 +1331,12 @@ export const SnakeGame: React.FC<GameProps> = ({
           box-shadow: 
             0 0 25px rgba(138, 43, 226, 0.5),
             inset 0 0 15px rgba(138, 43, 226, 0.2);
+          margin-bottom: 30px;
+          z-index: 1;
           animation: timerGlow 2s ease-in-out infinite alternate;
         }
 
-        .game-box {
+        .game-area {
           position: relative;
           width: ${VIEWPORT_SIZE}px;
           height: ${VIEWPORT_SIZE}px;
@@ -1340,10 +1346,11 @@ export const SnakeGame: React.FC<GameProps> = ({
           box-shadow: 
             0 0 30px rgba(0, 255, 255, 0.4),
             inset 0 0 20px rgba(0, 255, 255, 0.1);
-          margin-bottom: 30px;
+          margin-bottom: 20px;
+          z-index: 1;
         }
 
-        .game-canvas {
+        .main-canvas {
           display: block;
           background: #0a0a1a;
           width: 100%;
@@ -1363,15 +1370,21 @@ export const SnakeGame: React.FC<GameProps> = ({
             inset 0 0 10px rgba(138, 43, 226, 0.3);
         }
 
-        .joystick-container {
-          position: absolute;
-          bottom: 25px;
-          left: 50%;
-          transform: translateX(-50%);
+        .control-text {
+          color: #00ffff;
+          font-size: 1.1rem;
+          text-shadow: 0 0 15px rgba(0, 255, 255, 0.6);
+          margin-bottom: 20px;
+          z-index: 1;
+        }
+
+        .joystick-area {
           width: ${JOYSTICK_SIZE}px;
           height: ${JOYSTICK_SIZE}px;
+          margin-bottom: 20px;
           cursor: pointer;
-          z-index: 20;
+          z-index: 1;
+          touch-action: none;
         }
 
         .joystick-base {
@@ -1399,20 +1412,8 @@ export const SnakeGame: React.FC<GameProps> = ({
             0 4px 12px rgba(0,255,255,0.4),
             0 0 20px rgba(0,255,255,0.7),
             inset 0 0 15px rgba(255,255,255,0.4);
-          transition: transform 0.1s ease-out;
-        }
-
-        .bottom-ui {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          width: ${VIEWPORT_SIZE}px;
-        }
-
-        .instructions {
-          color: #00ffff;
-          font-size: 1.1rem;
-          text-shadow: 0 0 15px rgba(0, 255, 255, 0.6);
+          transition: transform 0.05s ease-out;
+          position: absolute;
         }
 
         .bottom-score {
@@ -1420,6 +1421,7 @@ export const SnakeGame: React.FC<GameProps> = ({
           font-size: 1.5rem;
           font-weight: bold;
           text-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
+          z-index: 1;
         }
 
         @keyframes backgroundMove {
@@ -1443,28 +1445,21 @@ export const SnakeGame: React.FC<GameProps> = ({
         }
 
         @media (max-width: 768px) {
-          .game-wrapper {
-            padding: 20px;
+          .game-container {
+            padding: 10px;
           }
 
           .game-live {
             font-size: 1.4rem;
           }
 
-          .main-score {
+          .score-large {
             font-size: 2rem;
           }
 
-          .game-box {
+          .game-area {
             width: 320px;
             height: 320px;
-          }
-
-          .bottom-ui {
-            width: 320px;
-            flex-direction: column;
-            gap: 10px;
-            text-align: center;
           }
 
           .joystick-base {
@@ -1475,6 +1470,11 @@ export const SnakeGame: React.FC<GameProps> = ({
           .joystick-knob {
             width: 20px;
             height: 20px;
+          }
+
+          .joystick-area {
+            width: 60px;
+            height: 60px;
           }
         }
       `}</style>
