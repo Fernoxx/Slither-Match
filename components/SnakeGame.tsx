@@ -870,30 +870,31 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
         }
 
         .game-live {
-          color: #00ff88;
+          color: #10b981;
           font-size: 1.2rem;
           font-weight: bold;
-          text-shadow: 0 0 15px rgba(0, 255, 136, 0.6);
+          text-shadow: 0 0 20px rgba(16, 185, 129, 0.8);
           animation: pulse 2s ease-in-out infinite;
         }
 
         .main-score {
-          color: #00ffff;
+          color: #fbbf24;
           font-size: 2rem;
           font-weight: bold;
-          text-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
+          text-shadow: 0 0 25px rgba(251, 191, 36, 0.8);
           animation: glow 3s ease-in-out infinite alternate;
         }
 
         .timer-box {
-          background: linear-gradient(135deg, rgba(138, 43, 226, 0.3), rgba(75, 0, 130, 0.3));
-          border: 2px solid #8a2be2;
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(10px);
+          border: 2px solid rgba(168, 85, 247, 0.5);
           padding: 8px 16px;
-          border-radius: 8px;
-          color: #ffffff;
+          border-radius: 12px;
+          color: #a855f7;
           font-weight: bold;
-          text-shadow: 0 0 10px rgba(138, 43, 226, 0.6);
-          box-shadow: 0 0 20px rgba(138, 43, 226, 0.4);
+          text-shadow: 0 0 15px rgba(168, 85, 247, 0.8);
+          box-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
         }
 
         .game-box {
@@ -945,13 +946,16 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
           width: ${JOYSTICK_SIZE}px;
           height: ${JOYSTICK_SIZE}px;
           border-radius: 50%;
-          background: linear-gradient(135deg, rgba(138, 43, 226, 0.3), rgba(75, 0, 130, 0.2));
-          border: 2px solid #8a2be2;
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(10px);
+          border: 3px solid rgba(168, 85, 247, 0.5);
           position: relative;
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 0 20px rgba(138, 43, 226, 0.4);
+          box-shadow: 
+            0 0 25px rgba(168, 85, 247, 0.4),
+            inset 0 0 20px rgba(255, 255, 255, 0.1);
         }
 
         .joystick-knob {
