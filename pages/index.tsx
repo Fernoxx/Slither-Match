@@ -8,17 +8,6 @@ import Link from 'next/link'
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`
 const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS as `0x${string}`
 
-// Extend Window interface for ethereum
-declare global {
-  interface Window {
-    ethereum?: {
-      request: (request: { method: string; params?: Array<any> }) => Promise<any>
-      isMetaMask?: boolean
-      isCoinbaseWallet?: boolean
-    }
-  }
-}
-
 export default function Home() {
   const { address, isConnected } = useAccount()
   const { connect } = useConnect()
