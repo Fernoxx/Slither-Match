@@ -106,9 +106,10 @@ export const SnakeGame: React.FC<GameProps> = ({
 
   // Generate random position in world
   const generateRandomPosition = useCallback((): Position => {
+    const wallMargin = 30 // Keep away from walls
     return {
-      x: Math.random() * (WORLD_SIZE - 200) + 100, // More margin from edges
-      y: Math.random() * (WORLD_SIZE - 200) + 100
+      x: Math.random() * (WORLD_SIZE - 2 * wallMargin) + wallMargin,
+      y: Math.random() * (WORLD_SIZE - 2 * wallMargin) + wallMargin
     }
   }, [])
 
@@ -231,11 +232,23 @@ export const SnakeGame: React.FC<GameProps> = ({
       y: head.y + Math.sin(newSnake.angle) * snake.speed
     }
 
-    // Wrap around world edges
-    if (newHead.x < 0) newHead.x = WORLD_SIZE
-    if (newHead.x > WORLD_SIZE) newHead.x = 0
-    if (newHead.y < 0) newHead.y = WORLD_SIZE
-    if (newHead.y > WORLD_SIZE) newHead.y = 0
+    // Check wall collision - die if hitting boundaries
+    if (newHead.x < snake.radius || newHead.x > WORLD_SIZE - snake.radius || 
+        newHead.y < snake.radius || newHead.y > WORLD_SIZE - snake.radius) {
+      // Mark snake as dead if it hits a wall (unless in preview mode)
+      if (!isPreview) {
+        newSnake.isDead = true
+      } else {
+        // In preview mode, bounce off walls
+        if (newHead.x < snake.radius) newHead.x = snake.radius
+        if (newHead.x > WORLD_SIZE - snake.radius) newHead.x = WORLD_SIZE - snake.radius
+        if (newHead.y < snake.radius) newHead.y = snake.radius
+        if (newHead.y > WORLD_SIZE - snake.radius) newHead.y = WORLD_SIZE - snake.radius
+        
+        // Reverse direction when hitting wall in preview
+        newSnake.angle = newSnake.angle + Math.PI + (Math.random() - 0.5) * 0.5
+      }
+    }
 
     // Update segments (follow the head smoothly)
     const newSegments = [newHead]
@@ -290,7 +303,7 @@ export const SnakeGame: React.FC<GameProps> = ({
       segments: newSegments,
       radius: calculateSnakeRadius(snake.score)
     }
-  }, [interpolateAngle, calculateSnakeRadius])
+  }, [interpolateAngle, calculateSnakeRadius, isPreview])
 
   // Update camera to follow player
   const updateCamera = useCallback((playerPosition: Position) => {
@@ -691,6 +704,32 @@ export const SnakeGame: React.FC<GameProps> = ({
     ctx.fillStyle = '#f8f8f8'
     ctx.fillRect(0, 0, VIEWPORT_SIZE, VIEWPORT_SIZE)
 
+    // Draw world boundaries/walls
+    const wallThickness = 10
+    ctx.fillStyle = '#4a5568' // Dark gray walls
+    
+    // Top wall
+    if (camera.y <= wallThickness) {
+      ctx.fillRect(0, 0, VIEWPORT_SIZE, wallThickness - camera.y)
+    }
+    
+    // Bottom wall  
+    if (camera.y + VIEWPORT_SIZE >= WORLD_SIZE - wallThickness) {
+      const wallTop = WORLD_SIZE - wallThickness - camera.y
+      ctx.fillRect(0, wallTop, VIEWPORT_SIZE, VIEWPORT_SIZE - wallTop)
+    }
+    
+    // Left wall
+    if (camera.x <= wallThickness) {
+      ctx.fillRect(0, 0, wallThickness - camera.x, VIEWPORT_SIZE)
+    }
+    
+    // Right wall
+    if (camera.x + VIEWPORT_SIZE >= WORLD_SIZE - wallThickness) {
+      const wallLeft = WORLD_SIZE - wallThickness - camera.x
+      ctx.fillRect(wallLeft, 0, VIEWPORT_SIZE - wallLeft, VIEWPORT_SIZE)
+    }
+
     // Draw grid dots
     ctx.fillStyle = '#e0e0e0'
     const gridSize = 30
@@ -698,7 +737,8 @@ export const SnakeGame: React.FC<GameProps> = ({
       for (let y = 0; y < VIEWPORT_SIZE; y += gridSize) {
         const worldX = camera.x + x
         const worldY = camera.y + y
-        if (worldX >= 0 && worldX <= WORLD_SIZE && worldY >= 0 && worldY <= WORLD_SIZE) {
+        if (worldX >= wallThickness && worldX <= WORLD_SIZE - wallThickness && 
+            worldY >= wallThickness && worldY <= WORLD_SIZE - wallThickness) {
           ctx.fillRect(x, y, 1, 1)
         }
       }
@@ -783,10 +823,18 @@ export const SnakeGame: React.FC<GameProps> = ({
 
     const mapSize = 100
     const scale = mapSize / WORLD_SIZE
+    const wallThickness = 10
 
     // Clear mini-map
     ctx.fillStyle = '#f0f0f0'
     ctx.fillRect(0, 0, mapSize, mapSize)
+
+    // Draw world boundaries on mini-map
+    ctx.fillStyle = '#4a5568'
+    ctx.fillRect(0, 0, mapSize, wallThickness * scale) // Top wall
+    ctx.fillRect(0, mapSize - wallThickness * scale, mapSize, wallThickness * scale) // Bottom wall  
+    ctx.fillRect(0, 0, wallThickness * scale, mapSize) // Left wall
+    ctx.fillRect(mapSize - wallThickness * scale, 0, wallThickness * scale, mapSize) // Right wall
 
     // Draw viewport indicator
     ctx.strokeStyle = '#666'
