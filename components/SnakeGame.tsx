@@ -6,6 +6,7 @@ interface GameProps {
   onScoreChange?: (score: number) => void
   onGameOver?: () => void
   onGameWin?: (finalScore: number, isWinner: boolean) => void
+  isPreview?: boolean // New prop for homepage preview
 }
 
 interface Position {
@@ -52,8 +53,8 @@ const GAME_DURATION = 180 // 3 minutes in seconds
 // Snake constants
 const BASE_SNAKE_RADIUS = 8 // Base snake thickness
 const MAX_SNAKE_RADIUS = 20 // Maximum snake thickness (1.5cm equivalent)
-const SNAKE_SPEED = 2 // Base movement speed
-const SEGMENT_SPACING = 6 // Distance between segments
+const SNAKE_SPEED = 1.5 // Reduced from 2 to 1.5 - slower movement
+const SEGMENT_SPACING = 8 // Increased from 6 to 8 - more space between segments
 
 // Joystick constants
 const JOYSTICK_SIZE = 80
@@ -68,7 +69,8 @@ export const SnakeGame: React.FC<GameProps> = ({
   isBot = false, 
   onScoreChange, 
   onGameOver,
-  onGameWin
+  onGameWin,
+  isPreview = false // Default to false
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const miniMapRef = useRef<HTMLCanvasElement>(null)
@@ -105,8 +107,8 @@ export const SnakeGame: React.FC<GameProps> = ({
   // Generate random position in world
   const generateRandomPosition = useCallback((): Position => {
     return {
-      x: Math.random() * (WORLD_SIZE - 100) + 50,
-      y: Math.random() * (WORLD_SIZE - 100) + 50
+      x: Math.random() * (WORLD_SIZE - 200) + 100, // More margin from edges
+      y: Math.random() * (WORLD_SIZE - 200) + 100
     }
   }, [])
 
@@ -150,7 +152,7 @@ export const SnakeGame: React.FC<GameProps> = ({
     const initialSnakes: Snake[] = []
     
     // Player snake
-    if (!isBot) {
+    if (!isBot && !isPreview) {
       const playerStart = { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 }
       initialSnakes.push({
         id: 'player',
@@ -173,7 +175,7 @@ export const SnakeGame: React.FC<GameProps> = ({
 
     // Bot snakes
     const botColors = [COLORS.BOT1, COLORS.BOT2, COLORS.BOT3, COLORS.BOT4, COLORS.BOT5]
-    const numBots = isBot ? 5 : 4
+    const numBots = isBot ? 5 : (isPreview ? 3 : 4) // Fewer bots in preview
     
     for (let i = 0; i < numBots; i++) {
       const startPos = generateRandomPosition()
@@ -181,10 +183,10 @@ export const SnakeGame: React.FC<GameProps> = ({
         id: `bot${i}`,
         segments: createSnakeSegments(startPos, 4),
         angle: Math.random() * Math.PI * 2,
-        speed: SNAKE_SPEED + Math.random() * 0.5,
+        speed: SNAKE_SPEED + Math.random() * 0.3, // Reduced randomness
         color: botColors[i],
-        score: 0,
-        radius: BASE_SNAKE_RADIUS,
+        score: Math.floor(Math.random() * 50), // Give bots some initial score for preview
+        radius: BASE_SNAKE_RADIUS + (isPreview ? Math.floor(Math.random() * 6) : 0),
         isDead: false
       })
     }
@@ -201,7 +203,7 @@ export const SnakeGame: React.FC<GameProps> = ({
     setGameStarted(true)
     setGameEnded(false)
     setTimeLeft(GAME_DURATION)
-  }, [isBot, generateRandomPosition, generateFood, createSnakeSegments])
+  }, [isBot, isPreview, generateRandomPosition, generateFood, createSnakeSegments])
 
   // Smooth angle interpolation
   const interpolateAngle = useCallback((current: number, target: number, factor: number): number => {
@@ -219,7 +221,7 @@ export const SnakeGame: React.FC<GameProps> = ({
     
     // Update angle based on input (smooth turning)
     if (targetAngle !== undefined && targetAngle !== null) {
-      newSnake.angle = interpolateAngle(snake.angle, targetAngle, 0.1)
+      newSnake.angle = interpolateAngle(snake.angle, targetAngle, 0.08) // Slower turning
     }
 
     // Move head
@@ -329,8 +331,8 @@ export const SnakeGame: React.FC<GameProps> = ({
       let targetAngle = Math.atan2(dy, dx)
       
       // Add some randomness to movement
-      if (Math.random() < 0.05) {
-        targetAngle += (Math.random() - 0.5) * 0.5
+      if (Math.random() < 0.03) { // Less randomness
+        targetAngle += (Math.random() - 0.5) * 0.3
       }
       
       return targetAngle
@@ -364,47 +366,49 @@ export const SnakeGame: React.FC<GameProps> = ({
     return { newFood, points }
   }, [generateFood])
 
-  // Check snake collision
+  // Check snake collision - FIXED to be much more forgiving
   const checkSnakeCollision = useCallback((snake: Snake, allSnakes: Snake[]): boolean => {
-    if (snake.isDead) return false
+    if (snake.isDead || isPreview) return false // No collisions in preview mode
 
     const head = snake.segments[0]
     
-    // Check collision with other snakes
+    // Check collision with other snakes - only body segments, not heads
     for (const otherSnake of allSnakes) {
       if (otherSnake.isDead || otherSnake.id === snake.id) continue
       
-      // Check collision with body segments (skip head)
-      for (let i = 1; i < otherSnake.segments.length; i++) {
+      // Check collision with body segments (skip head and first few segments)
+      for (let i = 3; i < otherSnake.segments.length; i++) { // Start from segment 3 instead of 1
         const segment = otherSnake.segments[i]
         const dx = head.x - segment.x
         const dy = head.y - segment.y
         const distance = Math.sqrt(dx * dx + dy * dy)
         
-        if (distance < snake.radius + otherSnake.radius - 2) {
+        // Much more forgiving collision - need to be very close
+        if (distance < (snake.radius + otherSnake.radius) * 0.7) { // 70% of full radius
           return true
         }
       }
     }
     
-    // Check collision with own body (skip first few segments)
-    for (let i = 4; i < snake.segments.length; i++) {
+    // Check collision with own body (skip many more segments to prevent instant death)
+    for (let i = 8; i < snake.segments.length; i++) { // Increased from 4 to 8
       const segment = snake.segments[i]
       const dx = head.x - segment.x
       const dy = head.y - segment.y
       const distance = Math.sqrt(dx * dx + dy * dy)
       
-      if (distance < snake.radius - 2) {
+      // Very forgiving self-collision
+      if (distance < snake.radius * 0.5) { // Only 50% of radius
         return true
       }
     }
     
     return false
-  }, [])
+  }, [isPreview])
 
   // Check game end conditions
   const checkGameEnd = useCallback((currentSnakes: Snake[]) => {
-    if (gameEnded) return
+    if (gameEnded || isPreview) return // No game over in preview mode
 
     const aliveSnakes = currentSnakes.filter(snake => !snake.isDead)
     const playerSnake = currentSnakes.find(snake => snake.isPlayer)
@@ -432,11 +436,11 @@ export const SnakeGame: React.FC<GameProps> = ({
       }
       return
     }
-  }, [gameEnded, timeLeft, onGameOver, onGameWin])
+  }, [gameEnded, isPreview, timeLeft, onGameOver, onGameWin])
 
   // Timer effect
   useEffect(() => {
-    if (isPlaying && gameStarted && !gameEnded) {
+    if (isPlaying && gameStarted && !gameEnded && !isPreview) { // No timer in preview
       timerRef.current = setInterval(() => {
         setTimeLeft(prev => {
           const newTime = prev - 1
@@ -457,7 +461,7 @@ export const SnakeGame: React.FC<GameProps> = ({
         clearInterval(timerRef.current)
       }
     }
-  }, [isPlaying, gameStarted, gameEnded])
+  }, [isPlaying, gameStarted, gameEnded, isPreview])
 
   // Joystick event handlers
   const handleJoystickStart = useCallback((clientX: number, clientY: number) => {
@@ -498,7 +502,7 @@ export const SnakeGame: React.FC<GameProps> = ({
     }
     
     // Calculate target angle for snake movement
-    const targetAngle = distance > 10 ? Math.atan2(deltaY, deltaX) : null
+    const targetAngle = distance > 15 ? Math.atan2(deltaY, deltaX) : null // Increased deadzone
     
     setJoystick(prev => ({
       ...prev,
@@ -519,38 +523,38 @@ export const SnakeGame: React.FC<GameProps> = ({
   // Touch and mouse events
   useEffect(() => {
     const handleTouchStart = (e: TouchEvent) => {
-      if (!isPlaying || isBot || gameEnded) return
+      if (!isPlaying || isBot || gameEnded || isPreview) return
       e.preventDefault()
       const touch = e.touches[0]
       handleJoystickStart(touch.clientX, touch.clientY)
     }
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (!isPlaying || isBot || gameEnded) return
+      if (!isPlaying || isBot || gameEnded || isPreview) return
       e.preventDefault()
       const touch = e.touches[0]
       handleJoystickMove(touch.clientX, touch.clientY)
     }
 
     const handleTouchEnd = (e: TouchEvent) => {
-      if (!isPlaying || isBot || gameEnded) return
+      if (!isPlaying || isBot || gameEnded || isPreview) return
       e.preventDefault()
       handleJoystickEnd()
     }
 
     const handleMouseDown = (e: MouseEvent) => {
-      if (!isPlaying || isBot || gameEnded) return
+      if (!isPlaying || isBot || gameEnded || isPreview) return
       e.preventDefault()
       handleJoystickStart(e.clientX, e.clientY)
     }
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isPlaying || isBot || gameEnded) return
+      if (!isPlaying || isBot || gameEnded || isPreview) return
       handleJoystickMove(e.clientX, e.clientY)
     }
 
     const handleMouseUp = (e: MouseEvent) => {
-      if (!isPlaying || isBot || gameEnded) return
+      if (!isPlaying || isBot || gameEnded || isPreview) return
       handleJoystickEnd()
     }
 
@@ -575,20 +579,26 @@ export const SnakeGame: React.FC<GameProps> = ({
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isPlaying, isBot, gameEnded, handleJoystickStart, handleJoystickMove, handleJoystickEnd])
+  }, [isPlaying, isBot, gameEnded, isPreview, handleJoystickStart, handleJoystickMove, handleJoystickEnd])
 
   // Game loop
   const gameLoop = useCallback(() => {
-    if (!isPlaying || !gameStarted || gameEnded) return
+    if (!isPlaying || !gameStarted || (gameEnded && !isPreview)) return
 
     setSnakes(currentSnakes => {
       const newSnakes = currentSnakes.map(snake => {
-        if (snake.isDead) return snake
+        if (snake.isDead && !isPreview) return snake // In preview, revive dead snakes
+
+        // Revive dead snakes in preview mode
+        if (snake.isDead && isPreview) {
+          snake.isDead = false
+          snake.segments = createSnakeSegments(generateRandomPosition(), 4)
+        }
 
         let targetAngle = undefined
         
         // Update movement direction
-        if (snake.isPlayer) {
+        if (snake.isPlayer && !isPreview) {
           targetAngle = joystick.targetAngle || undefined
         } else {
           targetAngle = updateBotAngle(snake, food)
@@ -598,7 +608,7 @@ export const SnakeGame: React.FC<GameProps> = ({
         const movedSnake = moveSnake(snake, targetAngle)
 
         // Update camera for player
-        if (snake.isPlayer) {
+        if (snake.isPlayer && !isPreview) {
           updateCamera(movedSnake.segments[0])
         }
 
@@ -608,7 +618,7 @@ export const SnakeGame: React.FC<GameProps> = ({
           setFood(newFood)
           movedSnake.score += points
           
-          if (snake.isPlayer) {
+          if (snake.isPlayer && !isPreview) {
             setPlayerScore(prev => {
               const newScore = prev + points
               onScoreChange?.(newScore)
@@ -617,24 +627,26 @@ export const SnakeGame: React.FC<GameProps> = ({
           }
         }
 
-        // Check snake collision
-        if (checkSnakeCollision(movedSnake, currentSnakes)) {
+        // Check snake collision (only if not preview)
+        if (!isPreview && checkSnakeCollision(movedSnake, currentSnakes)) {
           movedSnake.isDead = true
         }
 
         return movedSnake
       })
 
-      // Check game end conditions
-      checkGameEnd(newSnakes)
+      // Check game end conditions (only if not preview)
+      if (!isPreview) {
+        checkGameEnd(newSnakes)
+      }
 
       return newSnakes
     })
-  }, [isPlaying, gameStarted, gameEnded, joystick.targetAngle, food, moveSnake, updateCamera, updateBotAngle, checkFoodCollision, checkSnakeCollision, onScoreChange, checkGameEnd])
+  }, [isPlaying, gameStarted, gameEnded, isPreview, joystick.targetAngle, food, moveSnake, updateCamera, updateBotAngle, checkFoodCollision, checkSnakeCollision, onScoreChange, checkGameEnd, createSnakeSegments, generateRandomPosition])
 
   // Game loop effect
   useEffect(() => {
-    if (isPlaying && gameStarted && !gameEnded) {
+    if (isPlaying && gameStarted && (!gameEnded || isPreview)) { // Always run in preview
       const loop = () => {
         gameLoop()
         gameLoopRef.current = requestAnimationFrame(loop)
@@ -651,7 +663,7 @@ export const SnakeGame: React.FC<GameProps> = ({
         cancelAnimationFrame(gameLoopRef.current)
       }
     }
-  }, [isPlaying, gameStarted, gameEnded, gameLoop])
+  }, [isPlaying, gameStarted, gameEnded, isPreview, gameLoop])
 
   // Initialize game
   useEffect(() => {
@@ -708,7 +720,7 @@ export const SnakeGame: React.FC<GameProps> = ({
 
     // Draw snakes
     snakes.forEach(snake => {
-      if (snake.isDead) return
+      if (snake.isDead && !isPreview) return // Don't draw dead snakes except in preview
 
       snake.segments.forEach((segment, index) => {
         const screenX = segment.x - camera.x
@@ -749,8 +761,8 @@ export const SnakeGame: React.FC<GameProps> = ({
       })
     })
 
-    // Draw game end overlay
-    if (gameEnded) {
+    // Draw game end overlay (only if not preview)
+    if (gameEnded && !isPreview) {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'
       ctx.fillRect(0, 0, VIEWPORT_SIZE, VIEWPORT_SIZE)
       
@@ -759,7 +771,7 @@ export const SnakeGame: React.FC<GameProps> = ({
       ctx.textAlign = 'center'
       ctx.fillText('Game Over!', VIEWPORT_SIZE / 2, VIEWPORT_SIZE / 2)
     }
-  }, [snakes, food, camera, gameEnded])
+  }, [snakes, food, camera, gameEnded, isPreview])
 
   // Mini-map drawing
   useEffect(() => {
@@ -788,7 +800,7 @@ export const SnakeGame: React.FC<GameProps> = ({
 
     // Draw snakes as dots
     snakes.forEach(snake => {
-      if (snake.segments.length > 0 && !snake.isDead) {
+      if (snake.segments.length > 0 && (!snake.isDead || isPreview)) {
         const head = snake.segments[0]
         ctx.fillStyle = snake.color
         ctx.beginPath()
@@ -802,12 +814,12 @@ export const SnakeGame: React.FC<GameProps> = ({
         ctx.fill()
       }
     })
-  }, [snakes, camera])
+  }, [snakes, camera, isPreview])
 
   return (
     <div className="snake-game-container">
-      {/* Timer display */}
-      {!isBot && !gameEnded && (
+      {/* Timer display - only show if not preview and not bot */}
+      {!isBot && !gameEnded && !isPreview && (
         <div className="game-timer-display">
           Time: {formatTime(timeLeft)}
         </div>
@@ -826,23 +838,25 @@ export const SnakeGame: React.FC<GameProps> = ({
           }}
         />
         
-        {/* Mini-map */}
-        <div className="mini-map">
-          <canvas
-            ref={miniMapRef}
-            width={100}
-            height={100}
-            style={{
-              border: '1px solid #999',
-              borderRadius: '4px',
-              background: '#f0f0f0'
-            }}
-          />
-        </div>
+        {/* Mini-map - hide in preview */}
+        {!isPreview && (
+          <div className="mini-map">
+            <canvas
+              ref={miniMapRef}
+              width={100}
+              height={100}
+              style={{
+                border: '1px solid #999',
+                borderRadius: '4px',
+                background: '#f0f0f0'
+              }}
+            />
+          </div>
+        )}
       </div>
 
-      {/* Joystick controls */}
-      {!isBot && !gameEnded && (
+      {/* Joystick controls - only show if not preview, not bot, and not game ended */}
+      {!isBot && !gameEnded && !isPreview && (
         <div className="joystick-container">
           <div 
             ref={joystickRef}
@@ -876,7 +890,8 @@ export const SnakeGame: React.FC<GameProps> = ({
         </div>
       )}
 
-      {!isBot && (
+      {/* Score display - only show if not preview */}
+      {!isBot && !isPreview && (
         <div className="game-controls mt-4 text-center">
           <p className="text-sm text-gray-600 mb-2">
             Use joystick to control your snake
