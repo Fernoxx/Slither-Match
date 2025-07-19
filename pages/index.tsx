@@ -19,18 +19,18 @@ export default function Home() {
     address: CONTRACT_ADDRESS,
     abi: slitherMatchABI,
     functionName: 'getPlayers',
-    args: [lobbyId],
-    query: {
-      watch: true,
-      onSuccess(data) {
-        setPlayers(data as any[])
-      }
-    }
+    args: [lobbyId]
   })
 
   const { writeContract: joinLobby } = useWriteContract()
   const { writeContract: markRefundable } = useWriteContract()
   const { writeContract: refund } = useWriteContract()
+
+  useEffect(() => {
+    if (playersInLobby) {
+      setPlayers(playersInLobby as any[])
+    }
+  }, [playersInLobby])
 
   useEffect(() => {
     const interval = setInterval(() => setCurrentTime(Date.now()), 1000)

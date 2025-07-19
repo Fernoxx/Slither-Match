@@ -3,11 +3,15 @@ import type { AppProps } from "next/app"
 import { WagmiProvider, createConfig, http } from "wagmi"
 import { base, baseSepolia } from "wagmi/chains"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { farcasterMiniApp } from "@farcaster/miniapp-wagmi-connector"
+import { injected, metaMask, coinbaseWallet } from "wagmi/connectors"
 
 const config = createConfig({
   chains: [base, baseSepolia],
-  connectors: [farcasterMiniApp], // Remove the parentheses here too
+  connectors: [
+    injected(),
+    metaMask(),
+    coinbaseWallet({ appName: "SlitherMatch" })
+  ],
   ssr: true,
   transports: {
     [base.id]: http(),
