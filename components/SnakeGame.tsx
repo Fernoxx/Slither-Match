@@ -718,30 +718,23 @@ export const SnakeGame: React.FC<GameProps> = ({
     }
   }, [isPlaying, gameStarted, gameEnded, isPreview])
 
-  // Joystick event handlers
-  const handleJoystickStart = useCallback((clientX: number, clientY: number) => {
-    if (!joystickRef.current || gameEnded) return
-    
-    const rect = joystickRef.current.getBoundingClientRect()
-    const centerX = rect.left + rect.width / 2
-    const centerY = rect.top + rect.height / 2
-    
-    const deltaX = clientX - centerX
-    const deltaY = clientY - centerY
-    
-    setJoystick(prev => ({
-      ...prev,
-      isDragging: true,
-      knobPosition: { x: deltaX, y: deltaY }
-    }))
-  }, [gameEnded])
+  // Handle joystick interaction
+  const handleJoystickStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault()
+    setJoystick(prev => ({ ...prev, isDragging: true }))
+  }, [])
 
-  const handleJoystickMove = useCallback((clientX: number, clientY: number) => {
-    if (!joystick.isDragging || !joystickRef.current || gameEnded) return
+  const handleJoystickMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    if (!joystick.isDragging) return
     
-    const rect = joystickRef.current.getBoundingClientRect()
+    e.preventDefault()
+    
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
     const centerX = rect.left + rect.width / 2
     const centerY = rect.top + rect.height / 2
+    
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
     
     const deltaX = clientX - centerX
     const deltaY = clientY - centerY
@@ -764,7 +757,7 @@ export const SnakeGame: React.FC<GameProps> = ({
       knobPosition: { x: knobX, y: knobY },
       targetAngle
     }))
-  }, [joystick.isDragging, gameEnded])
+  }, [joystick.isDragging])
 
   const handleJoystickEnd = useCallback(() => {
     setJoystick(prev => ({
@@ -775,66 +768,17 @@ export const SnakeGame: React.FC<GameProps> = ({
     }))
   }, [])
 
-  // Touch and mouse events
+  // Touch and mouse controls
   useEffect(() => {
-    const handleTouchStart = (e: TouchEvent) => {
-      if (!isPlaying || isBot || gameEnded || isPreview) return
-      e.preventDefault()
-      const touch = e.touches[0]
-      handleJoystickStart(touch.clientX, touch.clientY)
-    }
+    if (isPreview || isBot) return
 
-    const handleTouchMove = (e: TouchEvent) => {
-      if (!isPlaying || isBot || gameEnded || isPreview) return
-      e.preventDefault()
-      const touch = e.touches[0]
-      handleJoystickMove(touch.clientX, touch.clientY)
-    }
-
-    const handleTouchEnd = (e: TouchEvent) => {
-      if (!isPlaying || isBot || gameEnded || isPreview) return
-      e.preventDefault()
-      handleJoystickEnd()
-    }
-
-    const handleMouseDown = (e: MouseEvent) => {
-      if (!isPlaying || isBot || gameEnded || isPreview) return
-      e.preventDefault()
-      handleJoystickStart(e.clientX, e.clientY)
-    }
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isPlaying || isBot || gameEnded || isPreview) return
-      handleJoystickMove(e.clientX, e.clientY)
-    }
-
-    const handleMouseUp = (e: MouseEvent) => {
-      if (!isPlaying || isBot || gameEnded || isPreview) return
-      handleJoystickEnd()
-    }
-
-    const joystickEl = joystickRef.current
-    if (joystickEl) {
-      joystickEl.addEventListener('touchstart', handleTouchStart, { passive: false })
-      joystickEl.addEventListener('touchmove', handleTouchMove, { passive: false })
-      joystickEl.addEventListener('touchend', handleTouchEnd, { passive: false })
-      joystickEl.addEventListener('mousedown', handleMouseDown)
-      
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
-    }
+    // Remove global event listeners since joystick handles events directly
+    // The joystick container now handles all touch/mouse events
 
     return () => {
-      if (joystickEl) {
-        joystickEl.removeEventListener('touchstart', handleTouchStart)
-        joystickEl.removeEventListener('touchmove', handleTouchMove)
-        joystickEl.removeEventListener('touchend', handleTouchEnd)
-        joystickEl.removeEventListener('mousedown', handleMouseDown)
-      }
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
+      // Cleanup if needed
     }
-  }, [isPlaying, isBot, gameEnded, isPreview, handleJoystickStart, handleJoystickMove, handleJoystickEnd])
+  }, [isPlaying, isBot, gameEnded, isPreview])
 
   // Game loop
   const gameLoop = useCallback(() => {
@@ -1111,90 +1055,211 @@ export const SnakeGame: React.FC<GameProps> = ({
   }, [snakes, camera, isPreview])
 
   return (
-    <div className="snake-game-container">
-      {/* Timer display - only show if not preview and not bot */}
-      {!isBot && !gameEnded && !isPreview && (
-        <div className="game-timer-display">
-          Time: {formatTime(timeLeft)}
+    <div className="game-container">
+      {/* Game UI - Score and Timer */}
+      {!isPreview && (
+        <div className="game-ui">
+          <div className="game-status">
+            <div className="game-live">🎮 Game Live!</div>
+            <div className="score-display">Score: {playerScore}</div>
+          </div>
+          {!isPreview && (
+            <div className="timer-display">
+              Time: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+            </div>
+          )}
         </div>
       )}
 
-      <div className="game-viewport-container">
-        {/* Main game canvas */}
+      {/* Main Game Canvas */}
+      <div className="canvas-container">
         <canvas
           ref={canvasRef}
           width={VIEWPORT_SIZE}
           height={VIEWPORT_SIZE}
-          style={{
-            border: '2px solid #ddd',
-            borderRadius: '8px',
-            background: '#f8f8f8'
-          }}
+          className="game-canvas"
         />
         
-        {/* Mini-map - hide in preview */}
+        {/* Mini-map */}
         {!isPreview && (
-          <div className="mini-map">
-            <canvas
-              ref={miniMapRef}
-              width={100}
-              height={100}
-              style={{
-                border: '1px solid #999',
-                borderRadius: '4px',
-                background: '#f0f0f0'
-              }}
-            />
+          <canvas
+            ref={miniMapRef}
+            width={100}
+            height={100}
+            className="mini-map"
+          />
+        )}
+
+        {/* Joystick - Positioned at bottom center of game box */}
+        {!isPreview && (
+          <div 
+            className="joystick-container"
+            onMouseDown={handleJoystickStart}
+            onMouseMove={handleJoystickMove}
+            onMouseUp={handleJoystickEnd}
+            onTouchStart={handleJoystickStart}
+            onTouchMove={handleJoystickMove}
+            onTouchEnd={handleJoystickEnd}
+          >
+            <div className="joystick-base">
+              <div 
+                className="joystick-knob"
+                style={{
+                  transform: `translate(${joystick.knobPosition.x}px, ${joystick.knobPosition.y}px)`
+                }}
+              />
+            </div>
           </div>
         )}
       </div>
 
-      {/* Joystick controls - only show if not preview, not bot, and not game ended */}
-      {!isBot && !gameEnded && !isPreview && (
-        <div className="joystick-container">
-          <div 
-            ref={joystickRef}
-            className="joystick-base"
-            style={{
-              width: JOYSTICK_SIZE,
-              height: JOYSTICK_SIZE,
-              borderRadius: '50%',
-              backgroundColor: 'rgba(0, 0, 0, 0.1)',
-              border: '2px solid rgba(0, 0, 0, 0.2)',
-              position: 'relative',
-              cursor: 'pointer'
-            }}
-          >
-            <div 
-              className="joystick-knob"
-              style={{
-                width: KNOB_SIZE,
-                height: KNOB_SIZE,
-                borderRadius: '50%',
-                backgroundColor: '#8b5cf6',
-                border: '2px solid #7c3aed',
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: `translate(${-KNOB_SIZE/2 + joystick.knobPosition.x}px, ${-KNOB_SIZE/2 + joystick.knobPosition.y}px)`,
-                transition: joystick.isDragging ? 'none' : 'transform 0.2s ease'
-              }}
-            />
-          </div>
+      {/* Control Instructions */}
+      {!isPreview && (
+        <div className="control-instructions">
+          Use joystick to control your snake
         </div>
       )}
 
-      {/* Score display - only show if not preview */}
-      {!isBot && !isPreview && (
-        <div className="game-controls mt-4 text-center">
-          <p className="text-sm text-gray-600 mb-2">
-            Use joystick to control your snake
-          </p>
-          <p className="text-lg font-bold text-purple-800">
-            Score: {playerScore}
-          </p>
-        </div>
-      )}
+      <style jsx>{`
+        .game-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          width: ${VIEWPORT_SIZE}px;
+          background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+          border-radius: 12px;
+          overflow: hidden;
+          position: relative;
+        }
+
+        .game-ui {
+          width: 100%;
+          padding: 15px 20px;
+          background: rgba(0,0,0,0.3);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          color: #00ffff;
+        }
+
+        .game-status {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .game-live {
+          color: #00ff88;
+          font-weight: bold;
+          font-size: 1.1rem;
+          margin-bottom: 5px;
+        }
+
+        .score-display {
+          color: #00ffff;
+          font-size: 1.3rem;
+          font-weight: bold;
+        }
+
+        .timer-display {
+          background: rgba(138, 43, 226, 0.3);
+          border: 1px solid #8a2be2;
+          padding: 8px 16px;
+          border-radius: 8px;
+          color: #ffffff;
+          font-weight: bold;
+        }
+
+        .canvas-container {
+          position: relative;
+          width: ${VIEWPORT_SIZE}px;
+          height: ${VIEWPORT_SIZE}px;
+        }
+
+        .game-canvas {
+          display: block;
+          background: #0a0a1a;
+          width: 100%;
+          height: 100%;
+        }
+
+        .mini-map {
+          position: absolute;
+          top: 10px;
+          right: 10px;
+          border: 2px solid #8a2be2;
+          border-radius: 8px;
+          background: rgba(0,0,0,0.7);
+          z-index: 10;
+        }
+
+        .joystick-container {
+          position: absolute;
+          bottom: 20px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: ${JOYSTICK_SIZE}px;
+          height: ${JOYSTICK_SIZE}px;
+          cursor: pointer;
+          z-index: 20;
+        }
+
+        .joystick-base {
+          width: ${JOYSTICK_SIZE}px;
+          height: ${JOYSTICK_SIZE}px;
+          border-radius: 50%;
+          background: rgba(138, 43, 226, 0.3);
+          border: 2px solid #8a2be2;
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .joystick-knob {
+          width: ${KNOB_SIZE}px;
+          height: ${KNOB_SIZE}px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #00ffff, #0088ff);
+          border: 2px solid #ffffff;
+          box-shadow: 0 4px 8px rgba(0,255,255,0.3);
+          transition: transform 0.1s ease-out;
+        }
+
+        .control-instructions {
+          padding: 15px;
+          color: #00ffff;
+          text-align: center;
+          font-size: 0.9rem;
+          background: rgba(0,0,0,0.3);
+          width: 100%;
+        }
+
+        @media (max-width: 768px) {
+          .game-container {
+            width: 300px;
+          }
+          
+          .canvas-container {
+            width: 300px;
+            height: 300px;
+          }
+
+          .joystick-container {
+            bottom: 15px;
+          }
+
+          .joystick-base {
+            width: 60px;
+            height: 60px;
+          }
+
+          .joystick-knob {
+            width: 20px;
+            height: 20px;
+          }
+        }
+      `}</style>
     </div>
   )
 }
