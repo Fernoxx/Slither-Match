@@ -1086,20 +1086,18 @@ export const SnakeGame: React.FC<GameProps> = ({
 
   return (
     <div className="game-container">
-      {/* Game UI - Score and Timer */}
-      {!isPreview && (
-        <div className="game-ui">
-          <div className="game-status">
-            <div className="game-live">🎮 Game Live!</div>
-            <div className="score-display">Score: {playerScore}</div>
-          </div>
-          {!isPreview && (
-            <div className="timer-display">
-              Time: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
-            </div>
-          )}
+      {/* Game UI - Score and Timer - Show in ALL modes */}
+      <div className="game-ui">
+        <div className="game-status">
+          <div className="game-live">🎮 Game Live!</div>
+          <div className="score-display">Score: {playerScore}</div>
         </div>
-      )}
+        {!isPreview && (
+          <div className="timer-display">
+            Time: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+          </div>
+        )}
+      </div>
 
       {/* Main Game Canvas */}
       <div className="canvas-container">
@@ -1143,10 +1141,15 @@ export const SnakeGame: React.FC<GameProps> = ({
         )}
       </div>
 
-      {/* Control Instructions */}
+      {/* Control Instructions + Score at bottom */}
       {!isPreview && (
-        <div className="control-instructions">
-          Use joystick to control your snake
+        <div className="bottom-ui">
+          <div className="control-instructions">
+            Use joystick to control your snake
+          </div>
+          <div className="bottom-score">
+            Score: {playerScore}
+          </div>
         </div>
       )}
 
@@ -1160,16 +1163,19 @@ export const SnakeGame: React.FC<GameProps> = ({
           border-radius: 12px;
           overflow: hidden;
           position: relative;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
 
         .game-ui {
           width: 100%;
           padding: 15px 20px;
-          background: rgba(0,0,0,0.3);
+          background: rgba(0,0,0,0.4);
           display: flex;
           justify-content: space-between;
           align-items: center;
           color: #00ffff;
+          backdrop-filter: blur(10px);
+          border-bottom: 1px solid rgba(0, 255, 255, 0.2);
         }
 
         .game-status {
@@ -1183,27 +1189,37 @@ export const SnakeGame: React.FC<GameProps> = ({
           font-weight: bold;
           font-size: 1.1rem;
           margin-bottom: 5px;
+          text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
         }
 
         .score-display {
           color: #00ffff;
-          font-size: 1.3rem;
+          font-size: 1.4rem;
           font-weight: bold;
+          text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
         }
 
         .timer-display {
-          background: rgba(138, 43, 226, 0.3);
+          background: linear-gradient(135deg, rgba(138, 43, 226, 0.3), rgba(75, 0, 130, 0.3));
           border: 1px solid #8a2be2;
           padding: 8px 16px;
           border-radius: 8px;
           color: #ffffff;
           font-weight: bold;
+          text-shadow: 0 0 10px rgba(138, 43, 226, 0.5);
+          box-shadow: 0 0 15px rgba(138, 43, 226, 0.3);
         }
 
         .canvas-container {
           position: relative;
           width: ${VIEWPORT_SIZE}px;
           height: ${VIEWPORT_SIZE}px;
+          border: 2px solid rgba(0, 255, 255, 0.3);
+          border-radius: 8px;
+          overflow: hidden;
+          box-shadow: 
+            0 0 20px rgba(0, 255, 255, 0.2),
+            inset 0 0 20px rgba(0, 255, 255, 0.1);
         }
 
         .game-canvas {
@@ -1219,8 +1235,11 @@ export const SnakeGame: React.FC<GameProps> = ({
           right: 10px;
           border: 2px solid #8a2be2;
           border-radius: 8px;
-          background: rgba(0,0,0,0.7);
+          background: rgba(0,0,0,0.8);
           z-index: 10;
+          box-shadow: 
+            0 0 15px rgba(138, 43, 226, 0.4),
+            inset 0 0 10px rgba(138, 43, 226, 0.2);
         }
 
         .joystick-container {
@@ -1238,12 +1257,15 @@ export const SnakeGame: React.FC<GameProps> = ({
           width: ${JOYSTICK_SIZE}px;
           height: ${JOYSTICK_SIZE}px;
           border-radius: 50%;
-          background: rgba(138, 43, 226, 0.3);
+          background: linear-gradient(135deg, rgba(138, 43, 226, 0.3), rgba(75, 0, 130, 0.2));
           border: 2px solid #8a2be2;
           position: relative;
           display: flex;
           align-items: center;
           justify-content: center;
+          box-shadow: 
+            0 0 20px rgba(138, 43, 226, 0.4),
+            inset 0 0 15px rgba(138, 43, 226, 0.2);
         }
 
         .joystick-knob {
@@ -1252,27 +1274,46 @@ export const SnakeGame: React.FC<GameProps> = ({
           border-radius: 50%;
           background: linear-gradient(135deg, #00ffff, #0088ff);
           border: 2px solid #ffffff;
-          box-shadow: 0 4px 8px rgba(0,255,255,0.3);
+          box-shadow: 
+            0 4px 8px rgba(0,255,255,0.3),
+            0 0 15px rgba(0,255,255,0.5),
+            inset 0 0 10px rgba(255,255,255,0.3);
           transition: transform 0.1s ease-out;
         }
 
-        .control-instructions {
-          padding: 15px;
-          color: #00ffff;
-          text-align: center;
-          font-size: 0.9rem;
-          background: rgba(0,0,0,0.3);
+        .bottom-ui {
           width: 100%;
+          padding: 15px 20px;
+          background: rgba(0,0,0,0.4);
+          backdrop-filter: blur(10px);
+          border-top: 1px solid rgba(0, 255, 255, 0.2);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .control-instructions {
+          color: #00ffff;
+          text-align: left;
+          font-size: 0.9rem;
+          text-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
+        }
+
+        .bottom-score {
+          color: #00ffff;
+          font-size: 1.2rem;
+          font-weight: bold;
+          text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
         }
 
         @media (max-width: 768px) {
           .game-container {
-            width: 300px;
+            width: 320px;
           }
           
           .canvas-container {
-            width: 300px;
-            height: 300px;
+            width: 320px;
+            height: 320px;
           }
 
           .joystick-container {
@@ -1287,6 +1328,14 @@ export const SnakeGame: React.FC<GameProps> = ({
           .joystick-knob {
             width: 20px;
             height: 20px;
+          }
+
+          .game-ui, .bottom-ui {
+            padding: 12px 15px;
+          }
+
+          .score-display, .bottom-score {
+            font-size: 1.1rem;
           }
         }
       `}</style>
