@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback, useLayoutEffect } from 'react'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
 
 interface GameProps {
   isPlaying: boolean
@@ -15,12 +15,13 @@ interface Position {
 
 interface Snake {
   id: string
-  positions: Position[]
-  direction: { x: number, y: number }
+  segments: Position[]
+  angle: number // Direction in radians
+  speed: number
   color: string
   score: number
   isPlayer?: boolean
-  width: number
+  radius: number
   isDead?: boolean
 }
 
@@ -28,6 +29,7 @@ interface Food {
   position: Position
   color: string
   points: number
+  radius: number
 }
 
 interface Camera {
@@ -38,23 +40,28 @@ interface Camera {
 interface JoystickState {
   isDragging: boolean
   knobPosition: { x: number, y: number }
-  direction: { x: number, y: number }
+  targetAngle: number | null
 }
 
 // Game constants
 const VIEWPORT_SIZE = 400
-const CELL_SIZE = 3
 const WORLD_SIZE = VIEWPORT_SIZE * 3 // 3x larger world
-const WORLD_CELLS = Math.floor(WORLD_SIZE / CELL_SIZE)
-const VIEWPORT_CELLS = Math.floor(VIEWPORT_SIZE / CELL_SIZE)
-const GAME_SPEED = 120
-const MAX_SNAKE_WIDTH = 15 // 1.5cm at 96dpi ≈ 15px
-const MIN_SNAKE_WIDTH = 4
+const GAME_SPEED = 60 // 60 FPS
 const GAME_DURATION = 180 // 3 minutes in seconds
+
+// Snake constants
+const BASE_SNAKE_RADIUS = 8 // Base snake thickness
+const MAX_SNAKE_RADIUS = 20 // Maximum snake thickness (1.5cm equivalent)
+const SNAKE_SPEED = 2 // Base movement speed
+const SEGMENT_SPACING = 6 // Distance between segments
 
 // Joystick constants
 const JOYSTICK_SIZE = 80
 const KNOB_SIZE = 30
+
+// Food constants
+const FOOD_COUNT = 100
+const FOOD_RADIUS = 3
 
 export const SnakeGame: React.FC<GameProps> = ({ 
   isPlaying, 
@@ -66,7 +73,7 @@ export const SnakeGame: React.FC<GameProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const miniMapRef = useRef<HTMLCanvasElement>(null)
   const joystickRef = useRef<HTMLDivElement>(null)
-  const gameLoopRef = useRef<NodeJS.Timeout | null>(null)
+  const gameLoopRef = useRef<number | null>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   
   const [snakes, setSnakes] = useState<Snake[]>([])
@@ -79,7 +86,7 @@ export const SnakeGame: React.FC<GameProps> = ({
   const [joystick, setJoystick] = useState<JoystickState>({
     isDragging: false,
     knobPosition: { x: 0, y: 0 },
-    direction: { x: 1, y: 0 }
+    targetAngle: null
   })
 
   // Colors for different elements
@@ -95,18 +102,11 @@ export const SnakeGame: React.FC<GameProps> = ({
     FOOD_PURPLE: '#8b5cf6'
   }
 
-  // Format time display
-  const formatTime = useCallback((seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }, [])
-
   // Generate random position in world
   const generateRandomPosition = useCallback((): Position => {
     return {
-      x: Math.floor(Math.random() * (WORLD_CELLS - 4)) + 2,
-      y: Math.floor(Math.random() * (WORLD_CELLS - 4)) + 2
+      x: Math.random() * (WORLD_SIZE - 100) + 50,
+      y: Math.random() * (WORLD_SIZE - 100) + 50
     }
   }, [])
 
@@ -122,14 +122,284 @@ export const SnakeGame: React.FC<GameProps> = ({
     return {
       position: generateRandomPosition(),
       color: foodType.color,
-      points: foodType.points
+      points: foodType.points,
+      radius: FOOD_RADIUS + Math.random() * 2
     }
   }, [generateRandomPosition])
 
-  // Calculate snake width based on score
-  const calculateSnakeWidth = useCallback((score: number): number => {
-    const widthIncrease = Math.floor(score / 30) // Increase width every 30 points
-    return Math.min(MIN_SNAKE_WIDTH + widthIncrease, MAX_SNAKE_WIDTH)
+  // Calculate snake radius based on score
+  const calculateSnakeRadius = useCallback((score: number): number => {
+    const radiusIncrease = Math.floor(score / 30) * 2
+    return Math.min(BASE_SNAKE_RADIUS + radiusIncrease, MAX_SNAKE_RADIUS)
+  }, [])
+
+  // Create initial snake segments
+  const createSnakeSegments = useCallback((headPosition: Position, length: number): Position[] => {
+    const segments: Position[] = [headPosition]
+    for (let i = 1; i < length; i++) {
+      segments.push({
+        x: headPosition.x - i * SEGMENT_SPACING,
+        y: headPosition.y
+      })
+    }
+    return segments
+  }, [])
+
+  // Initialize game
+  const initializeGame = useCallback(() => {
+    const initialSnakes: Snake[] = []
+    
+    // Player snake
+    if (!isBot) {
+      const playerStart = { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 }
+      initialSnakes.push({
+        id: 'player',
+        segments: createSnakeSegments(playerStart, 5),
+        angle: 0,
+        speed: SNAKE_SPEED,
+        color: COLORS.PLAYER,
+        score: 0,
+        isPlayer: true,
+        radius: BASE_SNAKE_RADIUS,
+        isDead: false
+      })
+      
+      // Set camera to follow player
+      setCamera({
+        x: playerStart.x - VIEWPORT_SIZE / 2,
+        y: playerStart.y - VIEWPORT_SIZE / 2
+      })
+    }
+
+    // Bot snakes
+    const botColors = [COLORS.BOT1, COLORS.BOT2, COLORS.BOT3, COLORS.BOT4, COLORS.BOT5]
+    const numBots = isBot ? 5 : 4
+    
+    for (let i = 0; i < numBots; i++) {
+      const startPos = generateRandomPosition()
+      initialSnakes.push({
+        id: `bot${i}`,
+        segments: createSnakeSegments(startPos, 4),
+        angle: Math.random() * Math.PI * 2,
+        speed: SNAKE_SPEED + Math.random() * 0.5,
+        color: botColors[i],
+        score: 0,
+        radius: BASE_SNAKE_RADIUS,
+        isDead: false
+      })
+    }
+
+    setSnakes(initialSnakes)
+
+    // Generate initial food
+    const initialFood: Food[] = []
+    for (let i = 0; i < FOOD_COUNT; i++) {
+      initialFood.push(generateFood())
+    }
+    setFood(initialFood)
+    setPlayerScore(0)
+    setGameStarted(true)
+    setGameEnded(false)
+    setTimeLeft(GAME_DURATION)
+  }, [isBot, generateRandomPosition, generateFood, createSnakeSegments])
+
+  // Smooth angle interpolation
+  const interpolateAngle = useCallback((current: number, target: number, factor: number): number => {
+    let diff = target - current
+    while (diff > Math.PI) diff -= 2 * Math.PI
+    while (diff < -Math.PI) diff += 2 * Math.PI
+    return current + diff * factor
+  }, [])
+
+  // Move snake with smooth movement
+  const moveSnake = useCallback((snake: Snake, targetAngle?: number): Snake => {
+    if (snake.isDead) return snake
+
+    const newSnake = { ...snake }
+    
+    // Update angle based on input (smooth turning)
+    if (targetAngle !== undefined && targetAngle !== null) {
+      newSnake.angle = interpolateAngle(snake.angle, targetAngle, 0.1)
+    }
+
+    // Move head
+    const head = snake.segments[0]
+    const newHead = {
+      x: head.x + Math.cos(newSnake.angle) * snake.speed,
+      y: head.y + Math.sin(newSnake.angle) * snake.speed
+    }
+
+    // Wrap around world edges
+    if (newHead.x < 0) newHead.x = WORLD_SIZE
+    if (newHead.x > WORLD_SIZE) newHead.x = 0
+    if (newHead.y < 0) newHead.y = WORLD_SIZE
+    if (newHead.y > WORLD_SIZE) newHead.y = 0
+
+    // Update segments (follow the head smoothly)
+    const newSegments = [newHead]
+    for (let i = 1; i < snake.segments.length; i++) {
+      const prevSegment = newSegments[i - 1]
+      const currentSegment = snake.segments[i]
+      
+      const dx = prevSegment.x - currentSegment.x
+      const dy = prevSegment.y - currentSegment.y
+      const distance = Math.sqrt(dx * dx + dy * dy)
+      
+      if (distance > SEGMENT_SPACING) {
+        const ratio = SEGMENT_SPACING / distance
+        newSegments.push({
+          x: prevSegment.x - dx * ratio,
+          y: prevSegment.y - dy * ratio
+        })
+      } else {
+        newSegments.push(currentSegment)
+      }
+    }
+
+    // Calculate length based on score
+    const baseLength = 5
+    const scoreLength = Math.floor(snake.score / 20)
+    const targetLength = baseLength + scoreLength
+    
+    // Add or remove segments
+    while (newSegments.length < targetLength) {
+      const lastSegment = newSegments[newSegments.length - 1]
+      const secondLast = newSegments[newSegments.length - 2] || lastSegment
+      const dx = lastSegment.x - secondLast.x
+      const dy = lastSegment.y - secondLast.y
+      const distance = Math.sqrt(dx * dx + dy * dy)
+      
+      if (distance > 0) {
+        newSegments.push({
+          x: lastSegment.x + (dx / distance) * SEGMENT_SPACING,
+          y: lastSegment.y + (dy / distance) * SEGMENT_SPACING
+        })
+      } else {
+        newSegments.push({ ...lastSegment })
+      }
+    }
+    
+    if (newSegments.length > targetLength) {
+      newSegments.splice(targetLength)
+    }
+
+    return {
+      ...newSnake,
+      segments: newSegments,
+      radius: calculateSnakeRadius(snake.score)
+    }
+  }, [interpolateAngle, calculateSnakeRadius])
+
+  // Update camera to follow player
+  const updateCamera = useCallback((playerPosition: Position) => {
+    const targetX = playerPosition.x - VIEWPORT_SIZE / 2
+    const targetY = playerPosition.y - VIEWPORT_SIZE / 2
+    
+    // Smooth camera movement
+    setCamera(prev => ({
+      x: prev.x + (targetX - prev.x) * 0.1,
+      y: prev.y + (targetY - prev.y) * 0.1
+    }))
+  }, [])
+
+  // AI for bot snakes
+  const updateBotAngle = useCallback((snake: Snake, allFood: Food[]): number => {
+    if (snake.isDead) return snake.angle
+
+    const head = snake.segments[0]
+    
+    // Find nearest food
+    let nearestFood = allFood[0]
+    let minDistance = Infinity
+    
+    allFood.forEach(f => {
+      const dx = head.x - f.position.x
+      const dy = head.y - f.position.y
+      const distance = dx * dx + dy * dy
+      if (distance < minDistance) {
+        minDistance = distance
+        nearestFood = f
+      }
+    })
+
+    if (nearestFood) {
+      // Calculate angle to food
+      const dx = nearestFood.position.x - head.x
+      const dy = nearestFood.position.y - head.y
+      let targetAngle = Math.atan2(dy, dx)
+      
+      // Add some randomness to movement
+      if (Math.random() < 0.05) {
+        targetAngle += (Math.random() - 0.5) * 0.5
+      }
+      
+      return targetAngle
+    }
+
+    return snake.angle
+  }, [])
+
+  // Check food collision
+  const checkFoodCollision = useCallback((snake: Snake, currentFood: Food[]): { newFood: Food[], points: number } => {
+    let points = 0
+    const head = snake.segments[0]
+    
+    const newFood = currentFood.filter(f => {
+      const dx = head.x - f.position.x
+      const dy = head.y - f.position.y
+      const distance = Math.sqrt(dx * dx + dy * dy)
+      
+      if (distance < snake.radius + f.radius) {
+        points += f.points
+        return false
+      }
+      return true
+    })
+
+    // Add new food to replace eaten food
+    while (newFood.length < FOOD_COUNT) {
+      newFood.push(generateFood())
+    }
+
+    return { newFood, points }
+  }, [generateFood])
+
+  // Check snake collision
+  const checkSnakeCollision = useCallback((snake: Snake, allSnakes: Snake[]): boolean => {
+    if (snake.isDead) return false
+
+    const head = snake.segments[0]
+    
+    // Check collision with other snakes
+    for (const otherSnake of allSnakes) {
+      if (otherSnake.isDead || otherSnake.id === snake.id) continue
+      
+      // Check collision with body segments (skip head)
+      for (let i = 1; i < otherSnake.segments.length; i++) {
+        const segment = otherSnake.segments[i]
+        const dx = head.x - segment.x
+        const dy = head.y - segment.y
+        const distance = Math.sqrt(dx * dx + dy * dy)
+        
+        if (distance < snake.radius + otherSnake.radius - 2) {
+          return true
+        }
+      }
+    }
+    
+    // Check collision with own body (skip first few segments)
+    for (let i = 4; i < snake.segments.length; i++) {
+      const segment = snake.segments[i]
+      const dx = head.x - segment.x
+      const dy = head.y - segment.y
+      const distance = Math.sqrt(dx * dx + dy * dy)
+      
+      if (distance < snake.radius - 2) {
+        return true
+      }
+    }
+    
+    return false
   }, [])
 
   // Check game end conditions
@@ -164,192 +434,6 @@ export const SnakeGame: React.FC<GameProps> = ({
     }
   }, [gameEnded, timeLeft, onGameOver, onGameWin])
 
-  // Initialize game
-  const initializeGame = useCallback(() => {
-    const initialSnakes: Snake[] = []
-    
-    // Player snake
-    if (!isBot) {
-      const playerStart = { x: Math.floor(WORLD_CELLS / 2), y: Math.floor(WORLD_CELLS / 2) }
-      initialSnakes.push({
-        id: 'player',
-        positions: [playerStart],
-        direction: { x: 1, y: 0 },
-        color: COLORS.PLAYER,
-        score: 0,
-        isPlayer: true,
-        width: MIN_SNAKE_WIDTH,
-        isDead: false
-      })
-      
-      // Set camera to follow player
-      setCamera({
-        x: playerStart.x * CELL_SIZE - VIEWPORT_SIZE / 2,
-        y: playerStart.y * CELL_SIZE - VIEWPORT_SIZE / 2
-      })
-    }
-
-    // Bot snakes
-    const botColors = [COLORS.BOT1, COLORS.BOT2, COLORS.BOT3, COLORS.BOT4, COLORS.BOT5]
-    const numBots = isBot ? 5 : 4
-    
-    for (let i = 0; i < numBots; i++) {
-      const startPos = generateRandomPosition()
-      initialSnakes.push({
-        id: `bot${i}`,
-        positions: [startPos],
-        direction: { 
-          x: Math.random() > 0.5 ? 1 : -1, 
-          y: Math.random() > 0.5 ? 1 : -1 
-        },
-        color: botColors[i],
-        score: 0,
-        width: MIN_SNAKE_WIDTH,
-        isDead: false
-      })
-    }
-
-    setSnakes(initialSnakes)
-
-    // Generate initial food (more food for larger world)
-    const initialFood: Food[] = []
-    for (let i = 0; i < 50; i++) {
-      initialFood.push(generateFood())
-    }
-    setFood(initialFood)
-    setPlayerScore(0)
-    setGameStarted(true)
-    setGameEnded(false)
-    setTimeLeft(GAME_DURATION)
-  }, [isBot, generateRandomPosition, generateFood])
-
-  // Move snake
-  const moveSnake = useCallback((snake: Snake): Snake => {
-    if (snake.isDead) return snake
-
-    const head = snake.positions[0]
-    const newHead = {
-      x: head.x + snake.direction.x,
-      y: head.y + snake.direction.y
-    }
-
-    // Check bounds - wrap around world
-    if (newHead.x < 0) newHead.x = WORLD_CELLS - 1
-    if (newHead.x >= WORLD_CELLS) newHead.x = 0
-    if (newHead.y < 0) newHead.y = WORLD_CELLS - 1
-    if (newHead.y >= WORLD_CELLS) newHead.y = 0
-
-    const newPositions = [newHead, ...snake.positions]
-    
-    // Calculate snake length based on score and width
-    const baseLength = 3
-    const scoreLength = Math.floor(snake.score / 15)
-    const maxLength = baseLength + scoreLength
-    
-    if (newPositions.length > maxLength) {
-      newPositions.pop()
-    }
-
-    return {
-      ...snake,
-      positions: newPositions,
-      width: calculateSnakeWidth(snake.score)
-    }
-  }, [calculateSnakeWidth])
-
-  // Update camera to follow player
-  const updateCamera = useCallback((playerPosition: Position) => {
-    const targetX = playerPosition.x * CELL_SIZE - VIEWPORT_SIZE / 2
-    const targetY = playerPosition.y * CELL_SIZE - VIEWPORT_SIZE / 2
-    
-    // Clamp camera to world bounds
-    const clampedX = Math.max(0, Math.min(WORLD_SIZE - VIEWPORT_SIZE, targetX))
-    const clampedY = Math.max(0, Math.min(WORLD_SIZE - VIEWPORT_SIZE, targetY))
-    
-    setCamera({ x: clampedX, y: clampedY })
-  }, [])
-
-  // AI for bot snakes
-  const updateBotDirection = useCallback((snake: Snake, allFood: Food[], allSnakes: Snake[]): { x: number, y: number } => {
-    if (snake.isDead) return snake.direction
-
-    const head = snake.positions[0]
-    
-    // Find nearest food
-    let nearestFood = allFood[0]
-    let minDistance = Infinity
-    
-    allFood.forEach(f => {
-      const distance = Math.abs(head.x - f.position.x) + Math.abs(head.y - f.position.y)
-      if (distance < minDistance) {
-        minDistance = distance
-        nearestFood = f
-      }
-    })
-
-    if (nearestFood) {
-      // Move towards food with some randomness
-      const dx = nearestFood.position.x - head.x
-      const dy = nearestFood.position.y - head.y
-      
-      if (Math.random() < 0.15) {
-        return {
-          x: Math.random() > 0.5 ? 1 : -1,
-          y: Math.random() > 0.5 ? 1 : -1
-        }
-      }
-      
-      if (Math.abs(dx) > Math.abs(dy)) {
-        return { x: dx > 0 ? 1 : -1, y: 0 }
-      } else {
-        return { x: 0, y: dy > 0 ? 1 : -1 }
-      }
-    }
-
-    return snake.direction
-  }, [])
-
-  // Check food collision
-  const checkFoodCollision = useCallback((snakeHead: Position, currentFood: Food[]): { newFood: Food[], points: number } => {
-    let points = 0
-    const newFood = currentFood.filter(f => {
-      if (f.position.x === snakeHead.x && f.position.y === snakeHead.y) {
-        points += f.points
-        return false
-      }
-      return true
-    })
-
-    // Add new food to replace eaten food
-    while (newFood.length < 50) {
-      newFood.push(generateFood())
-    }
-
-    return { newFood, points }
-  }, [generateFood])
-
-  // Check snake collision
-  const checkSnakeCollision = useCallback((snake: Snake, allSnakes: Snake[]): boolean => {
-    if (snake.isDead) return false
-
-    const head = snake.positions[0]
-    
-    // Check collision with other snakes (including their own body after head)
-    for (const otherSnake of allSnakes) {
-      if (otherSnake.isDead) continue
-      
-      const segments = otherSnake.id === snake.id ? otherSnake.positions.slice(1) : otherSnake.positions
-      
-      for (const segment of segments) {
-        if (head.x === segment.x && head.y === segment.y) {
-          return true
-        }
-      }
-    }
-    
-    return false
-  }, [])
-
   // Timer effect
   useEffect(() => {
     if (isPlaying && gameStarted && !gameEnded) {
@@ -383,10 +467,13 @@ export const SnakeGame: React.FC<GameProps> = ({
     const centerX = rect.left + rect.width / 2
     const centerY = rect.top + rect.height / 2
     
+    const deltaX = clientX - centerX
+    const deltaY = clientY - centerY
+    
     setJoystick(prev => ({
       ...prev,
       isDragging: true,
-      knobPosition: { x: clientX - centerX, y: clientY - centerY }
+      knobPosition: { x: deltaX, y: deltaY }
     }))
   }, [gameEnded])
 
@@ -410,24 +497,13 @@ export const SnakeGame: React.FC<GameProps> = ({
       knobY = (deltaY / distance) * maxDistance
     }
     
-    // Calculate direction
-    const threshold = 10
-    let dirX = 0, dirY = 0
-    
-    if (Math.abs(knobX) > threshold || Math.abs(knobY) > threshold) {
-      if (Math.abs(knobX) > Math.abs(knobY)) {
-        dirX = knobX > 0 ? 1 : -1
-        dirY = 0
-      } else {
-        dirX = 0
-        dirY = knobY > 0 ? 1 : -1
-      }
-    }
+    // Calculate target angle for snake movement
+    const targetAngle = distance > 10 ? Math.atan2(deltaY, deltaX) : null
     
     setJoystick(prev => ({
       ...prev,
       knobPosition: { x: knobX, y: knobY },
-      direction: { x: dirX, y: dirY }
+      targetAngle
     }))
   }, [joystick.isDragging, gameEnded])
 
@@ -435,11 +511,12 @@ export const SnakeGame: React.FC<GameProps> = ({
     setJoystick(prev => ({
       ...prev,
       isDragging: false,
-      knobPosition: { x: 0, y: 0 }
+      knobPosition: { x: 0, y: 0 },
+      targetAngle: null
     }))
   }, [])
 
-  // Touch events
+  // Touch and mouse events
   useEffect(() => {
     const handleTouchStart = (e: TouchEvent) => {
       if (!isPlaying || isBot || gameEnded) return
@@ -461,7 +538,6 @@ export const SnakeGame: React.FC<GameProps> = ({
       handleJoystickEnd()
     }
 
-    // Mouse events for desktop
     const handleMouseDown = (e: MouseEvent) => {
       if (!isPlaying || isBot || gameEnded) return
       e.preventDefault()
@@ -509,26 +585,25 @@ export const SnakeGame: React.FC<GameProps> = ({
       const newSnakes = currentSnakes.map(snake => {
         if (snake.isDead) return snake
 
-        // Update bot direction
-        if (!snake.isPlayer) {
-          snake.direction = updateBotDirection(snake, food, currentSnakes)
+        let targetAngle = undefined
+        
+        // Update movement direction
+        if (snake.isPlayer) {
+          targetAngle = joystick.targetAngle || undefined
         } else {
-          // Use joystick direction for player
-          if (joystick.direction.x !== 0 || joystick.direction.y !== 0) {
-            snake.direction = joystick.direction
-          }
+          targetAngle = updateBotAngle(snake, food)
         }
 
         // Move snake
-        const movedSnake = moveSnake(snake)
+        const movedSnake = moveSnake(snake, targetAngle)
 
         // Update camera for player
         if (snake.isPlayer) {
-          updateCamera(movedSnake.positions[0])
+          updateCamera(movedSnake.segments[0])
         }
 
         // Check food collision
-        const { newFood, points } = checkFoodCollision(movedSnake.positions[0], food)
+        const { newFood, points } = checkFoodCollision(movedSnake, food)
         if (points > 0) {
           setFood(newFood)
           movedSnake.score += points
@@ -555,21 +630,25 @@ export const SnakeGame: React.FC<GameProps> = ({
 
       return newSnakes
     })
-  }, [isPlaying, gameStarted, gameEnded, joystick.direction, food, moveSnake, updateCamera, updateBotDirection, checkFoodCollision, checkSnakeCollision, onScoreChange, checkGameEnd])
+  }, [isPlaying, gameStarted, gameEnded, joystick.targetAngle, food, moveSnake, updateCamera, updateBotAngle, checkFoodCollision, checkSnakeCollision, onScoreChange, checkGameEnd])
 
   // Game loop effect
   useEffect(() => {
     if (isPlaying && gameStarted && !gameEnded) {
-      gameLoopRef.current = setInterval(gameLoop, GAME_SPEED)
+      const loop = () => {
+        gameLoop()
+        gameLoopRef.current = requestAnimationFrame(loop)
+      }
+      gameLoopRef.current = requestAnimationFrame(loop)
     } else {
       if (gameLoopRef.current) {
-        clearInterval(gameLoopRef.current)
+        cancelAnimationFrame(gameLoopRef.current)
       }
     }
 
     return () => {
       if (gameLoopRef.current) {
-        clearInterval(gameLoopRef.current)
+        cancelAnimationFrame(gameLoopRef.current)
       }
     }
   }, [isPlaying, gameStarted, gameEnded, gameLoop])
@@ -580,6 +659,13 @@ export const SnakeGame: React.FC<GameProps> = ({
       initializeGame()
     }
   }, [isPlaying, initializeGame])
+
+  // Format time display
+  const formatTime = useCallback((seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }, [])
 
   // Main canvas drawing
   useEffect(() => {
@@ -595,54 +681,69 @@ export const SnakeGame: React.FC<GameProps> = ({
 
     // Draw grid dots
     ctx.fillStyle = '#e0e0e0'
-    for (let x = 0; x < VIEWPORT_CELLS; x += 8) {
-      for (let y = 0; y < VIEWPORT_CELLS; y += 8) {
-        const worldX = (camera.x / CELL_SIZE) + x
-        const worldY = (camera.y / CELL_SIZE) + y
-        if (worldX >= 0 && worldX < WORLD_CELLS && worldY >= 0 && worldY < WORLD_CELLS) {
-          ctx.fillRect(x * CELL_SIZE - (camera.x % CELL_SIZE) + 1, y * CELL_SIZE - (camera.y % CELL_SIZE) + 1, 1, 1)
+    const gridSize = 30
+    for (let x = 0; x < VIEWPORT_SIZE; x += gridSize) {
+      for (let y = 0; y < VIEWPORT_SIZE; y += gridSize) {
+        const worldX = camera.x + x
+        const worldY = camera.y + y
+        if (worldX >= 0 && worldX <= WORLD_SIZE && worldY >= 0 && worldY <= WORLD_SIZE) {
+          ctx.fillRect(x, y, 1, 1)
         }
       }
     }
 
     // Draw food
     food.forEach(f => {
-      const screenX = f.position.x * CELL_SIZE - camera.x
-      const screenY = f.position.y * CELL_SIZE - camera.y
+      const screenX = f.position.x - camera.x
+      const screenY = f.position.y - camera.y
       
-      if (screenX >= -CELL_SIZE && screenX <= VIEWPORT_SIZE && screenY >= -CELL_SIZE && screenY <= VIEWPORT_SIZE) {
+      if (screenX >= -f.radius && screenX <= VIEWPORT_SIZE + f.radius && 
+          screenY >= -f.radius && screenY <= VIEWPORT_SIZE + f.radius) {
         ctx.fillStyle = f.color
         ctx.beginPath()
-        ctx.arc(screenX + CELL_SIZE / 2, screenY + CELL_SIZE / 2, CELL_SIZE, 0, 2 * Math.PI)
+        ctx.arc(screenX, screenY, f.radius, 0, 2 * Math.PI)
         ctx.fill()
       }
     })
 
     // Draw snakes
     snakes.forEach(snake => {
-      if (snake.isDead) return // Don't draw dead snakes
+      if (snake.isDead) return
 
-      snake.positions.forEach((pos, index) => {
-        const screenX = pos.x * CELL_SIZE - camera.x
-        const screenY = pos.y * CELL_SIZE - camera.y
+      snake.segments.forEach((segment, index) => {
+        const screenX = segment.x - camera.x
+        const screenY = segment.y - camera.y
         
-        if (screenX >= -snake.width && screenX <= VIEWPORT_SIZE && screenY >= -snake.width && screenY <= VIEWPORT_SIZE) {
-          ctx.fillStyle = snake.color
+        if (screenX >= -snake.radius && screenX <= VIEWPORT_SIZE + snake.radius && 
+            screenY >= -snake.radius && screenY <= VIEWPORT_SIZE + snake.radius) {
           
+          // Draw snake segment
+          ctx.fillStyle = snake.color
+          ctx.beginPath()
+          ctx.arc(screenX, screenY, snake.radius, 0, 2 * Math.PI)
+          ctx.fill()
+          
+          // Draw eyes on head
           if (index === 0) {
-            // Draw head as circle
+            const eyeSize = snake.radius * 0.15
+            const eyeDistance = snake.radius * 0.4
+            
+            ctx.fillStyle = 'white'
             ctx.beginPath()
-            ctx.arc(screenX + CELL_SIZE / 2, screenY + CELL_SIZE / 2, snake.width / 2, 0, 2 * Math.PI)
-            ctx.fill()
-          } else {
-            // Draw body as rectangle
-            const size = Math.max(CELL_SIZE, snake.width)
-            ctx.fillRect(
-              screenX + (CELL_SIZE - size) / 2, 
-              screenY + (CELL_SIZE - size) / 2, 
-              size, 
-              size
+            ctx.arc(
+              screenX + Math.cos(snake.angle - 0.5) * eyeDistance,
+              screenY + Math.sin(snake.angle - 0.5) * eyeDistance,
+              eyeSize, 0, 2 * Math.PI
             )
+            ctx.fill()
+            
+            ctx.beginPath()
+            ctx.arc(
+              screenX + Math.cos(snake.angle + 0.5) * eyeDistance,
+              screenY + Math.sin(snake.angle + 0.5) * eyeDistance,
+              eyeSize, 0, 2 * Math.PI
+            )
+            ctx.fill()
           }
         }
       })
@@ -687,14 +788,14 @@ export const SnakeGame: React.FC<GameProps> = ({
 
     // Draw snakes as dots
     snakes.forEach(snake => {
-      if (snake.positions.length > 0 && !snake.isDead) {
-        const head = snake.positions[0]
+      if (snake.segments.length > 0 && !snake.isDead) {
+        const head = snake.segments[0]
         ctx.fillStyle = snake.color
         ctx.beginPath()
         ctx.arc(
-          head.x * CELL_SIZE * scale,
-          head.y * CELL_SIZE * scale,
-          Math.max(2, snake.width * scale / 2),
+          head.x * scale,
+          head.y * scale,
+          Math.max(2, snake.radius * scale),
           0,
           2 * Math.PI
         )

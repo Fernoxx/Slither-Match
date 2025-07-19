@@ -188,9 +188,6 @@ export default function Home() {
           {/* Game Preview - Updated with new features */}
           <div className="game-preview">
             <div className="game-board-container">
-              <div className="game-board-header">
-                <div className="game-timer">Preview Game</div>
-              </div>
               <SnakeGame isPlaying={true} isBot={true} />
             </div>
             
