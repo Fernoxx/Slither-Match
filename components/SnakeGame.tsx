@@ -569,18 +569,8 @@ export const SnakeGame: React.FC<GameProps> = ({
       }
     }
     
-    // Check collision with own body (skip many more segments to prevent instant death)
-    for (let i = 12; i < snake.segments.length; i++) { // Increased from 8 to 12
-      const segment = snake.segments[i]
-      const dx = head.x - segment.x
-      const dy = head.y - segment.y
-      const distance = Math.sqrt(dx * dx + dy * dy)
-      
-      // EXTREMELY forgiving self-collision
-      if (distance < snake.radius * 0.3) { // Reduced from 0.5 to 0.3
-        return true
-      }
-    }
+    // NO self-collision - hitting your own tail won't kill you!
+    // This allows for more creative movement and prevents frustrating deaths
     
     return false
   }, [isPreview])
@@ -616,6 +606,27 @@ export const SnakeGame: React.FC<GameProps> = ({
       return
     }
   }, [gameEnded, isPreview, timeLeft, onGameOver, onGameWin])
+
+  // Spawn food dots where dead snakes were
+  const spawnFoodFromDeadSnake = useCallback((deadSnake: Snake): Food[] => {
+    const newFood: Food[] = []
+    
+    // Spawn food at each segment of the dead snake
+    deadSnake.segments.forEach((segment, index) => {
+      // Skip some segments to avoid too much food clustering
+      if (index % 2 === 0) { // Every other segment
+        newFood.push({
+          id: `dead-${deadSnake.id}-${index}-${Date.now()}`,
+          x: segment.x + (Math.random() - 0.5) * 10, // Small random offset
+          y: segment.y + (Math.random() - 0.5) * 10,
+          radius: FOOD_RADIUS + Math.random() * 2,
+          color: FOOD_COLORS[Math.floor(Math.random() * FOOD_COLORS.length)]
+        })
+      }
+    })
+    
+    return newFood
+  }, [])
 
   // Timer effect
   useEffect(() => {
