@@ -389,22 +389,39 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
 
       // Check food collision
       for (let i = newFood.length - 1; i >= 0; i--) {
-        if (checkCollision(head, snake.radius, newFood[i].position, newFood[i].radius)) {
+        if (checkCollision(head, snake.radius * 0.9, newFood[i].position, newFood[i].radius)) {
           // Eat food
           newFood.splice(i, 1)
           newSnake.score += 1
-          newSnake.radius = Math.min(snake.radius + 0.3, 15) // Grow but cap size
+          newSnake.radius = Math.min(snake.radius + 0.2, 15) // Grow but cap size
           
-          // Add new segment
+          // Add new segment properly at tail
           const tail = snake.segments[snake.segments.length - 1]
-          const secondToTail = snake.segments[snake.segments.length - 2] || tail
+          const secondToTail = snake.segments.length > 1 ? snake.segments[snake.segments.length - 2] : tail
+          
+          // Calculate direction from second-to-tail to tail
           const dx = tail.x - secondToTail.x
           const dy = tail.y - secondToTail.y
-          const length = Math.sqrt(dx * dx + dy * dy) || 1
-          newSnake.segments.push({
-            x: tail.x + (dx / length) * snake.radius * 1.8,
-            y: tail.y + (dy / length) * snake.radius * 1.8
-          })
+          const distance = Math.sqrt(dx * dx + dy * dy)
+          
+          let newSegmentX, newSegmentY
+          if (distance > 0) {
+            // Place new segment behind the tail
+            const unitX = dx / distance
+            const unitY = dy / distance
+            newSegmentX = tail.x + unitX * snake.radius * 1.5
+            newSegmentY = tail.y + unitY * snake.radius * 1.5
+          } else {
+            // Fallback if segments are too close
+            newSegmentX = tail.x + snake.radius * 1.5
+            newSegmentY = tail.y
+          }
+          
+          // Add new segment
+          newSnake.segments = [...snake.segments, {
+            x: newSegmentX,
+            y: newSegmentY
+          }]
 
           if (snake.isPlayer) {
             scoreIncrease += 1
@@ -416,26 +433,58 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
         }
       }
 
-      // Check snake-to-snake collision (but NOT self-collision)
-      for (const otherSnake of currentSnakes) {
-        if (otherSnake.id === snake.id || otherSnake.isDead) continue // Skip self and dead snakes
-        
-        // Check collision with other snake's segments
-        for (let i = 0; i < otherSnake.segments.length; i++) {
-          if (checkCollision(head, snake.radius, otherSnake.segments[i], otherSnake.radius)) {
+      // Check wall collision
+      if (head.x - snake.radius <= 0 || head.x + snake.radius >= WORLD_SIZE ||
+          head.y - snake.radius <= 0 || head.y + snake.radius >= WORLD_SIZE) {
+        newSnake.isDead = true
+        console.log(`Snake ${snake.id} hit wall`)
+      }
+
+      // Check self-collision (don't check first few segments)
+      if (!newSnake.isDead) {
+        for (let i = 4; i < snake.segments.length; i++) {
+          if (checkCollision(head, snake.radius * 0.8, snake.segments[i], snake.radius * 0.8)) {
             newSnake.isDead = true
-            console.log(`Snake ${snake.id} collided with snake ${otherSnake.id}`)
-            
-            // Add food at death location
-            newFood.push({
-              position: { x: head.x, y: head.y },
-              color: COLORS.FOOD[Math.floor(Math.random() * COLORS.FOOD.length)],
-              radius: 6
-            })
+            console.log(`Snake ${snake.id} hit itself`)
             break
           }
         }
-        if (newSnake.isDead) break
+      }
+
+      // Check snake-to-snake collision 
+      if (!newSnake.isDead) {
+        for (const otherSnake of currentSnakes) {
+          if (otherSnake.id === snake.id || otherSnake.isDead) continue
+          
+          // Check collision with other snake's segments
+          for (let i = 0; i < otherSnake.segments.length; i++) {
+            if (checkCollision(head, snake.radius, otherSnake.segments[i], otherSnake.radius)) {
+              newSnake.isDead = true
+              console.log(`Snake ${snake.id} collided with snake ${otherSnake.id}`)
+              break
+            }
+          }
+          if (newSnake.isDead) break
+        }
+      }
+
+      // If snake died, drop food for each segment
+      if (newSnake.isDead && !snake.isDead) {
+        console.log(`Snake ${snake.id} died, dropping ${snake.segments.length} food pieces`)
+        snake.segments.forEach((segment, index) => {
+          // Add some randomness to food placement
+          const offsetX = (Math.random() - 0.5) * snake.radius * 2
+          const offsetY = (Math.random() - 0.5) * snake.radius * 2
+          
+          newFood.push({
+            position: { 
+              x: Math.max(10, Math.min(WORLD_SIZE - 10, segment.x + offsetX)), 
+              y: Math.max(10, Math.min(WORLD_SIZE - 10, segment.y + offsetY))
+            },
+            color: COLORS.FOOD[Math.floor(Math.random() * COLORS.FOOD.length)],
+            radius: 4 + Math.random() * 2 // Vary food size
+          })
+        })
       }
 
       return newSnake
@@ -666,11 +715,24 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
   // Camera follow player
   useEffect(() => {
     if (isPreview) {
-      // Center camera in preview mode
-      setCamera({
-        x: (WORLD_SIZE - VIEWPORT_SIZE) / 2,
-        y: (WORLD_SIZE - VIEWPORT_SIZE) / 2
-      })
+      // In preview mode, follow the action or center view
+      const aliveSnakes = snakes.filter(s => !s.isDead)
+      if (aliveSnakes.length > 0) {
+        // Calculate center of all alive snakes
+        const centerX = aliveSnakes.reduce((sum, s) => sum + s.segments[0].x, 0) / aliveSnakes.length
+        const centerY = aliveSnakes.reduce((sum, s) => sum + s.segments[0].y, 0) / aliveSnakes.length
+        
+        setCamera({
+          x: Math.max(0, Math.min(WORLD_SIZE - VIEWPORT_SIZE, centerX - VIEWPORT_SIZE / 2)),
+          y: Math.max(0, Math.min(WORLD_SIZE - VIEWPORT_SIZE, centerY - VIEWPORT_SIZE / 2))
+        })
+      } else {
+        // Default center view
+        setCamera({
+          x: (WORLD_SIZE - VIEWPORT_SIZE) / 2,
+          y: (WORLD_SIZE - VIEWPORT_SIZE) / 2
+        })
+      }
       return
     }
 
@@ -693,10 +755,50 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
     if (!ctx) return
 
     // Clear canvas
-    ctx.fillStyle = '#0a0a1a'
+    ctx.fillStyle = '#0a0c1a'
     ctx.fillRect(0, 0, VIEWPORT_SIZE, VIEWPORT_SIZE)
 
-    // Draw food
+    // Draw world boundaries/walls
+    ctx.strokeStyle = '#1c1f2e'
+    ctx.lineWidth = 3
+    ctx.setLineDash([])
+    
+    // Draw world border if visible
+    const worldLeft = -camera.x
+    const worldTop = -camera.y
+    const worldRight = WORLD_SIZE - camera.x
+    const worldBottom = WORLD_SIZE - camera.y
+    
+    if (worldLeft >= -10 && worldLeft <= VIEWPORT_SIZE + 10) {
+      // Left wall
+      ctx.beginPath()
+      ctx.moveTo(worldLeft, Math.max(0, worldTop))
+      ctx.lineTo(worldLeft, Math.min(VIEWPORT_SIZE, worldBottom))
+      ctx.stroke()
+    }
+    if (worldRight >= -10 && worldRight <= VIEWPORT_SIZE + 10) {
+      // Right wall
+      ctx.beginPath()
+      ctx.moveTo(worldRight, Math.max(0, worldTop))
+      ctx.lineTo(worldRight, Math.min(VIEWPORT_SIZE, worldBottom))
+      ctx.stroke()
+    }
+    if (worldTop >= -10 && worldTop <= VIEWPORT_SIZE + 10) {
+      // Top wall
+      ctx.beginPath()
+      ctx.moveTo(Math.max(0, worldLeft), worldTop)
+      ctx.lineTo(Math.min(VIEWPORT_SIZE, worldRight), worldTop)
+      ctx.stroke()
+    }
+    if (worldBottom >= -10 && worldBottom <= VIEWPORT_SIZE + 10) {
+      // Bottom wall
+      ctx.beginPath()
+      ctx.moveTo(Math.max(0, worldLeft), worldBottom)
+      ctx.lineTo(Math.min(VIEWPORT_SIZE, worldRight), worldBottom)
+      ctx.stroke()
+    }
+
+    // Draw food with neon glow
     food.forEach(f => {
       const screenX = f.position.x - camera.x
       const screenY = f.position.y - camera.y
@@ -704,28 +806,37 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
       if (screenX >= -f.radius && screenX <= VIEWPORT_SIZE + f.radius && 
           screenY >= -f.radius && screenY <= VIEWPORT_SIZE + f.radius) {
         ctx.fillStyle = f.color
+        ctx.shadowBlur = 8
+        ctx.shadowColor = f.color
         ctx.beginPath()
         ctx.arc(screenX, screenY, f.radius, 0, 2 * Math.PI)
         ctx.fill()
+        ctx.shadowBlur = 0
       }
     })
 
-    // Draw snakes
+    // Draw snakes with proper visibility
     snakes.forEach(snake => {
-      if (snake.isDead && !isPreview) return // Don't draw dead snakes except in preview
+      if (snake.isDead && !isPreview) return
 
       snake.segments.forEach((segment, index) => {
         const screenX = segment.x - camera.x
         const screenY = segment.y - camera.y
         
-        if (screenX >= -snake.radius && screenX <= VIEWPORT_SIZE + snake.radius && 
-            screenY >= -snake.radius && screenY <= VIEWPORT_SIZE + snake.radius) {
+        // More generous bounds checking for better visibility
+        if (screenX >= -snake.radius - 20 && screenX <= VIEWPORT_SIZE + snake.radius + 20 && 
+            screenY >= -snake.radius - 20 && screenY <= VIEWPORT_SIZE + snake.radius + 20) {
           
-          // Draw snake segment
+          const radius = index === 0 ? snake.radius + 1 : snake.radius
+          
+          // Draw snake segment with glow
           ctx.fillStyle = snake.color
+          ctx.shadowBlur = 12
+          ctx.shadowColor = snake.color
           ctx.beginPath()
-          ctx.arc(screenX, screenY, snake.radius, 0, 2 * Math.PI)
+          ctx.arc(screenX, screenY, radius, 0, 2 * Math.PI)
           ctx.fill()
+          ctx.shadowBlur = 0
           
           // Draw eyes on head
           if (index === 0) {
@@ -759,41 +870,54 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
     const scale = mapSize / WORLD_SIZE
     const wallThickness = 10
 
-    // Clear mini-map
-    ctx.fillStyle = '#f0f0f0'
+    // Clear mini-map with neon theme
+    ctx.fillStyle = '#0a0c1a'
     ctx.fillRect(0, 0, mapSize, mapSize)
 
-    // Draw world boundaries on mini-map
-    ctx.fillStyle = '#4a5568'
-    ctx.fillRect(0, 0, mapSize, wallThickness * scale) // Top wall
-    ctx.fillRect(0, mapSize - wallThickness * scale, mapSize, wallThickness * scale) // Bottom wall  
-    ctx.fillRect(0, 0, wallThickness * scale, mapSize) // Left wall
-    ctx.fillRect(mapSize - wallThickness * scale, 0, wallThickness * scale, mapSize) // Right wall
+    // Draw world boundaries on mini-map with neon colors
+    ctx.fillStyle = '#1c1f2e'
+    ctx.fillRect(0, 0, mapSize, 2) // Top wall
+    ctx.fillRect(0, mapSize - 2, mapSize, 2) // Bottom wall  
+    ctx.fillRect(0, 0, 2, mapSize) // Left wall
+    ctx.fillRect(mapSize - 2, 0, 2, mapSize) // Right wall
 
-    // Draw viewport indicator
-    ctx.strokeStyle = '#666'
+    // Draw viewport indicator with neon glow
+    ctx.strokeStyle = '#8b5cf6'
     ctx.lineWidth = 1
+    ctx.shadowBlur = 3
+    ctx.shadowColor = '#8b5cf6'
     ctx.strokeRect(
       camera.x * scale,
       camera.y * scale,
       VIEWPORT_SIZE * scale,
       VIEWPORT_SIZE * scale
     )
+    ctx.shadowBlur = 0
 
-    // Draw snakes as dots
+    // Draw snakes as glowing dots
     snakes.forEach(snake => {
       if (snake.segments.length > 0 && (!snake.isDead || isPreview)) {
         const head = snake.segments[0]
         ctx.fillStyle = snake.color
+        ctx.shadowBlur = 4
+        ctx.shadowColor = snake.color
         ctx.beginPath()
         ctx.arc(
           head.x * scale,
           head.y * scale,
-          Math.max(2, snake.radius * scale),
+          Math.max(2, snake.radius * scale * 0.8),
           0,
           2 * Math.PI
         )
         ctx.fill()
+        ctx.shadowBlur = 0
+        
+        // Draw player snake with extra highlight
+        if (snake.isPlayer) {
+          ctx.strokeStyle = '#ffffff'
+          ctx.lineWidth = 1
+          ctx.stroke()
+        }
       }
     })
   }, [snakes, camera, isPreview, WORLD_SIZE])
