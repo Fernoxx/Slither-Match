@@ -457,17 +457,9 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
         console.log(`Snake ${snake.id} hit wall at (${head.x}, ${head.y})`)
       }
 
-              // Check self-collision (disabled for player snake)
-      if (!newSnake.isDead && !snake.isPlayer && snake.segments.length > 10) { // Player snake cannot hit itself
-        for (let i = 10; i < snake.segments.length; i++) { // Increased from 6 to 10
-          if (checkCollision(head, snake.radius * 0.6, snake.segments[i], snake.radius * 0.6)) {
-            newSnake.isDead = true
-            console.log(`Bot snake ${snake.id} hit itself at segment ${i}`)
-            break
-          }
-        }
-      }
-
+      // Check self-collision (DISABLED FOR ALL SNAKES - no snake can hit itself)
+      // Self-collision disabled - snakes can cross their own body
+      
       // Check snake-to-snake collision with smaller hitbox
       if (!newSnake.isDead) {
         for (const otherSnake of currentSnakes) {
@@ -510,11 +502,12 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
     return [updatedSnakes, newFood, scoreIncrease]
   }, [checkCollision, generateFood])
 
-  // Update bot AI
+  // Update bot AI with limited turning radius
   const updateBotAI = useCallback((bot: Snake, allSnakes: Snake[], allFood: Food[]): number | null => {
     if (bot.isDead || allFood.length === 0) return null
 
     const head = bot.segments[0]
+    const currentDirection = bot.angle || 0
     
     // In preview mode, ensure snakes visit center area frequently
     if (isPreview) {
@@ -529,7 +522,14 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
       // Strong bias towards center if far away, or random chance to visit center
       if (distanceToCenter > VIEWPORT_SIZE * 0.6 || Math.random() < 0.3) {
         const centerAngle = Math.atan2(centerY - head.y, centerX - head.x)
-        return centerAngle + (Math.random() - 0.5) * 0.3
+        
+        // Limit turning radius - max 0.15 radians per frame (realistic turning)
+        const angleDiff = centerAngle - currentDirection
+        const normalizedDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff))
+        const maxTurn = 0.15
+        const limitedTurn = Math.max(-maxTurn, Math.min(maxTurn, normalizedDiff))
+        
+        return currentDirection + limitedTurn + (Math.random() - 0.5) * 0.1
       }
     }
     
@@ -554,9 +554,15 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
       nearestFood.position.x - head.x
     )
 
-    // Add some randomness to make bots less predictable
-    const randomOffset = (Math.random() - 0.5) * 0.2 // Further reduced randomness
-    return targetAngle + randomOffset
+    // CRITICAL: Limit turning radius to prevent impossible turns
+    const angleDiff = targetAngle - currentDirection
+    const normalizedDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff))
+    const maxTurn = 0.12 // Maximum turning radius per frame
+    const limitedTurn = Math.max(-maxTurn, Math.min(maxTurn, normalizedDiff))
+    
+    // Add some randomness but keep it realistic
+    const randomOffset = (Math.random() - 0.5) * 0.05 // Reduced randomness
+    return currentDirection + limitedTurn + randomOffset
   }, [isPreview, WORLD_SIZE])
 
   // Improved joystick handlers with global event listening for smooth control
@@ -899,12 +905,17 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
     ctx.fillRect(0, 0, 2, mapSize) // Left wall
     ctx.fillRect(mapSize - 2, 0, 2, mapSize) // Right wall
 
-    // Draw viewport indicator
+    // Draw viewport indicator (CLAMPED TO MINIMAP BOUNDS)
     ctx.strokeStyle = '#8b5cf6'
     ctx.lineWidth = 1
+    
+    // Clamp viewport position to minimap bounds
+    const clampedCameraX = Math.max(0, Math.min(WORLD_SIZE - VIEWPORT_SIZE, camera.x))
+    const clampedCameraY = Math.max(0, Math.min(WORLD_SIZE - VIEWPORT_SIZE, camera.y))
+    
     ctx.strokeRect(
-      camera.x * scale,
-      camera.y * scale,
+      clampedCameraX * scale,
+      clampedCameraY * scale,
       VIEWPORT_SIZE * scale,
       VIEWPORT_SIZE * scale
     )
