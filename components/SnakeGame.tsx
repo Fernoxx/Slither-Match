@@ -1,7 +1,10 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react'
 
 interface SnakeGameProps {
+  isPlaying?: boolean
   onGameOver?: (score: number) => void
+  onScoreChange?: (score: number) => void
+  onGameWin?: (score: number, isWinner?: boolean) => void
   isBot?: boolean
   isPreview?: boolean
   isPaidLobby?: boolean
@@ -40,7 +43,10 @@ interface JoystickState {
 }
 
 const SnakeGame: React.FC<SnakeGameProps> = ({ 
+  isPlaying = true,
   onGameOver, 
+  onScoreChange,
+  onGameWin,
   isBot = false, 
   isPreview = false,
   isPaidLobby = false 
@@ -78,10 +84,10 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
     targetAngle: null
   })
 
-  // Colors for different elements
+  // Colors for different elements - Updated to neon theme
   const COLORS = {
-    PLAYER: '#3b82f6',  // Blue
-    FOOD: ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899'], // Various colors
+    PLAYER: '#00ffff',  // Cyan for player
+    FOOD: ['#00ffd1', '#fc4fff', '#f1ff00', '#ff1f4d'], // Neon colors from your GameUI design
     BOTS: ['#ef4444', '#f97316', '#eab308', '#22c55e', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'] // Bot colors
   }
 
@@ -761,278 +767,80 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
   }, [snakes, camera, isPreview, WORLD_SIZE])
 
   return (
-    <div className="game-container">
-      {/* Game UI matching the exact reference image layout */}
-      <div className="game-status-bar">
-        <div className="status-left">
-          <div className="game-live">🎮 Game Live!</div>
+    <div className="relative min-h-screen bg-[#06010a] text-white grid place-items-center font-mono">
+      {/* Top Panel */}
+      {!isPreview && (
+        <div className="absolute top-4 w-full flex justify-between px-8 items-center">
+          <div className="text-green-400 text-lg font-bold">
+            🎮 Game Live!
+          </div>
+          <button className="text-gray-400 hover:text-red-400 transition">
+            Disconnect
+          </button>
         </div>
-        <div className="status-center">
-          <div className="main-score">Score: {playerScore}</div>
-        </div>
-        <div className="status-right">
-          {!isPreview && (
-            <div className="timer-box">
+      )}
+
+      {/* Center Game Canvas */}
+      <div className="flex flex-col items-center">
+        {!isPreview && (
+          <>
+            <div className="text-white text-xl font-semibold mb-1">Score: {playerScore}</div>
+            <div className="text-purple-400 text-lg mb-3">
               Time: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* Game Canvas */}
-      <div className="game-box">
-        <canvas
-          ref={canvasRef}
-          width={VIEWPORT_SIZE}
-          height={VIEWPORT_SIZE}
-          className="game-canvas"
-        />
-        
-        {/* Mini-map */}
-        {!isPreview && (
-          <canvas
-            ref={miniMapRef}
-            width={100}
-            height={100}
-            className="mini-map"
-          />
+          </>
         )}
 
-        {/* Joystick - Smooth responsive handling */}
-        {!isPreview && (
-          <div 
-            ref={joystickContainerRef}
-            className="joystick-container"
-            onMouseDown={handleJoystickStart}
-            onTouchStart={handleJoystickStart}
-          >
-            <div className="joystick-base">
+        <div className="relative w-[444px] h-[444px] bg-[#0a0c1a] border border-[#1c1f2e] rounded">
+          <canvas
+            ref={canvasRef}
+            width={VIEWPORT_SIZE}
+            height={VIEWPORT_SIZE}
+            className="w-full h-full"
+          />
+          
+          {/* Mini-map */}
+          {!isPreview && (
+            <div className="absolute bottom-2 right-2 w-[70px] h-[70px] border border-purple-400/50 bg-black/30 rounded p-1">
+              <canvas
+                ref={miniMapRef}
+                width={60}
+                height={60}
+                className="w-full h-full border border-purple-500/60"
+              />
+            </div>
+          )}
+
+          {/* Joystick positioned inside game area at bottom center */}
+          {!isPreview && (
+            <div 
+              ref={joystickContainerRef}
+              className="absolute bottom-4 left-1/2 transform -translate-x-1/2 w-20 h-20 rounded-full bg-purple-900 border border-purple-500 shadow-lg shadow-purple-500/20 cursor-pointer"
+              onMouseDown={handleJoystickStart}
+              onTouchStart={handleJoystickStart}
+            >
               <div 
-                className="joystick-knob"
+                className="absolute w-6 h-6 bg-cyan-400 rounded-full border-2 border-white shadow-lg transition-transform duration-75 ease-out"
                 style={{
-                  transform: `translate(${joystick.knobPosition.x}px, ${joystick.knobPosition.y}px)`
+                  top: '50%',
+                  left: '50%',
+                  transform: `translate(calc(-50% + ${joystick.knobPosition.x}px), calc(-50% + ${joystick.knobPosition.y}px))`
                 }}
               />
             </div>
+          )}
+        </div>
+
+        {/* Instructions and Score */}
+        {!isPreview && (
+          <div className="mt-6 flex flex-col items-center">
+            <p className="text-teal-400 text-sm mb-2">Use joystick to control your snake</p>
+            <p className="text-cyan-300 font-bold">Score: {playerScore}</p>
           </div>
         )}
       </div>
 
-      {/* Bottom Instructions */}
-      {!isPreview && (
-        <div className="bottom-instructions">
-          Use joystick to control your snake
-          <div className="bottom-score">Score: {playerScore}</div>
-        </div>
-      )}
 
-      <style jsx>{`
-        .game-container {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
-          min-height: 100vh;
-          padding: 20px;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          position: relative;
-          overflow: hidden;
-        }
-
-        .game-container::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-image: 
-            radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.2) 0%, transparent 50%),
-            radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.2) 0%, transparent 50%),
-            radial-gradient(circle at 40% 80%, rgba(99, 102, 241, 0.2) 0%, transparent 50%);
-          pointer-events: none;
-        }
-
-        .game-status-bar {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          width: ${VIEWPORT_SIZE}px;
-          margin-bottom: 20px;
-          z-index: 1;
-        }
-
-        .status-left, .status-center, .status-right {
-          flex: 1;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-        }
-
-        .game-live {
-          color: #10b981;
-          font-size: 1.2rem;
-          font-weight: bold;
-          text-shadow: 0 0 20px rgba(16, 185, 129, 0.8);
-          animation: pulse 2s ease-in-out infinite;
-        }
-
-        .main-score {
-          color: #fbbf24;
-          font-size: 2rem;
-          font-weight: bold;
-          text-shadow: 0 0 25px rgba(251, 191, 36, 0.8);
-          animation: glow 3s ease-in-out infinite alternate;
-        }
-
-        .timer-box {
-          background: rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(10px);
-          border: 2px solid rgba(168, 85, 247, 0.5);
-          padding: 8px 16px;
-          border-radius: 12px;
-          color: #a855f7;
-          font-weight: bold;
-          text-shadow: 0 0 15px rgba(168, 85, 247, 0.8);
-          box-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
-        }
-
-        .game-box {
-          position: relative;
-          width: ${VIEWPORT_SIZE}px;
-          height: ${VIEWPORT_SIZE}px;
-          border: 2px solid rgba(255, 255, 255, 0.3);
-          border-radius: 20px;
-          overflow: hidden;
-          box-shadow: 
-            0 20px 60px rgba(0, 0, 0, 0.3),
-            0 0 40px rgba(139, 92, 246, 0.2),
-            inset 0 0 20px rgba(255, 255, 255, 0.1);
-          background: rgba(255, 255, 255, 0.05);
-          backdrop-filter: blur(10px);
-          z-index: 1;
-        }
-
-        .game-canvas {
-          display: block;
-          background: #0a0a1a;
-          width: 100%;
-          height: 100%;
-        }
-
-        .mini-map {
-          position: absolute;
-          top: 10px;
-          right: 10px;
-          border: 2px solid #8a2be2;
-          border-radius: 4px;
-          background: rgba(0,0,0,0.8);
-          z-index: 10;
-          box-shadow: 0 0 15px rgba(138, 43, 226, 0.4);
-        }
-
-        .joystick-container {
-          position: absolute;
-          bottom: 20px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: ${JOYSTICK_SIZE}px;
-          height: ${JOYSTICK_SIZE}px;
-          cursor: pointer;
-          z-index: 20;
-        }
-
-        .joystick-base {
-          width: ${JOYSTICK_SIZE}px;
-          height: ${JOYSTICK_SIZE}px;
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(10px);
-          border: 3px solid rgba(168, 85, 247, 0.5);
-          position: relative;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          box-shadow: 
-            0 0 25px rgba(168, 85, 247, 0.4),
-            inset 0 0 20px rgba(255, 255, 255, 0.1);
-        }
-
-        .joystick-knob {
-          width: ${KNOB_SIZE}px;
-          height: ${KNOB_SIZE}px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #fbbf24, #f59e0b);
-          border: 3px solid #ffffff;
-          box-shadow: 
-            0 4px 15px rgba(251, 191, 36, 0.4),
-            0 0 20px rgba(251, 191, 36, 0.6),
-            inset 0 0 15px rgba(255, 255, 255, 0.3);
-          transition: transform 0.05s ease-out;
-        }
-
-        .bottom-instructions {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          width: ${VIEWPORT_SIZE}px;
-          margin-top: 20px;
-          color: #ffffff;
-          text-shadow: 0 0 15px rgba(255, 255, 255, 0.6);
-          z-index: 1;
-        }
-
-        .bottom-score {
-          font-size: 1.2rem;
-          font-weight: bold;
-          color: #fbbf24;
-          text-shadow: 0 0 20px rgba(251, 191, 36, 0.8);
-        }
-
-        @keyframes backgroundMove {
-          0% { transform: translateX(0) translateY(0); }
-          100% { transform: translateX(-60px) translateY(-60px); }
-        }
-
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.05); }
-        }
-
-        @keyframes glow {
-          from { text-shadow: 0 0 20px rgba(0, 255, 255, 0.8); }
-          to { text-shadow: 0 0 30px rgba(0, 255, 255, 1); }
-        }
-
-        @media (max-width: 768px) {
-          .game-container {
-            padding: 10px;
-          }
-
-          .game-box {
-            width: 320px;
-            height: 320px;
-          }
-
-          .game-status-bar, .bottom-instructions {
-            width: 320px;
-          }
-
-          .main-score {
-            font-size: 1.5rem;
-          }
-
-          .joystick-base {
-            width: 60px;
-            height: 60px;
-          }
-
-          .joystick-knob {
-            width: 20px;
-            height: 20px;
-          }
-        }
-      `}</style>
     </div>
   )
 }

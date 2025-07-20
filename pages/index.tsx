@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { SnakeGame } from '../components/SnakeGame'
+import SnakeGame from '../components/SnakeGame'
 
 // Wallet integration for Farcaster miniapps
 declare global {
@@ -591,7 +591,7 @@ export default function Home() {
               setGameEnded(true)
             }}
             onGameWin={(score, isWinner) => {
-              handleGameEnd(score, isWinner)
+              handleGameEnd(score, isWinner || false)
             }}
           />
         )}
