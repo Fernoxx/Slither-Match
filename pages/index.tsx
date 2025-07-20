@@ -58,14 +58,8 @@ export default function Home() {
   const joinBotLobby = useCallback(() => {
     setCurrentView('bot-lobby')
     setIsPaidLobby(false)
-    setPlayers(['You', 'Bot Alice', 'Bot Bob', 'Bot Charlie'])
-    setTimeout(() => setCountdown(3), 1000)
-    setTimeout(() => setCountdown(2), 2000)
-    setTimeout(() => setCountdown(1), 3000)
-    setTimeout(() => {
-      setCountdown(null)
-      setGameStarted(true)
-    }, 4000)
+    setPlayers([])
+    setGameStarted(true) // Start immediately
   }, [])
 
   // Join paid lobby
@@ -174,12 +168,12 @@ export default function Home() {
         </div>
       )}
 
-      {(currentView === 'bot-lobby' || currentView === 'paid-lobby') && !gameStarted && !gameEnded && (
-        <div className="text-center z-10">
-          <div className="bg-[#1a1a2e] border border-[#2d2d5e] rounded-lg p-8 mb-6 min-w-[400px]">
-            <h2 className="text-2xl font-bold mb-6 text-cyan-400">
-              {currentView === 'paid-lobby' ? '💰 Paid Lobby' : '🤖 Bot Lobby'}
-            </h2>
+                           {currentView === 'paid-lobby' && !gameStarted && !gameEnded && (
+         <div className="text-center z-10">
+           <div className="bg-[#1a1a2e] border border-[#2d2d5e] rounded-lg p-8 mb-6 min-w-[400px]">
+             <h2 className="text-2xl font-bold mb-6 text-cyan-400">
+               💰 Paid Lobby
+             </h2>
             
             <div className="mb-6">
               <h3 className="text-lg font-semibold mb-3 text-purple-400">Players ({players.length}/5):</h3>

@@ -53,7 +53,7 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
 }) => {
   // Dynamic constants based on game mode
   const WORLD_SIZE = isPaidLobby ? 1332 : 2000
-  const BOT_COUNT = isPaidLobby ? 4 : 9
+  const BOT_COUNT = isPaidLobby ? 4 : 10
   const FOOD_COUNT = isPaidLobby ? 80 : 150
   const GAME_DURATION = 180 // 3 minutes
   const SNAKE_SPEED = 1.8 // Slightly reduced from 2
@@ -781,8 +781,11 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
           <div className="text-green-400 text-lg font-bold">
             🎮 Game Live!
           </div>
-          <button className="text-gray-400 hover:text-red-400 transition">
-            Disconnect
+          <button 
+            onClick={() => window.location.href = '/'}
+            className="text-gray-400 hover:text-red-400 transition"
+          >
+            ← Back to Home
           </button>
         </div>
       )}
