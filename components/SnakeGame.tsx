@@ -457,12 +457,12 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
         console.log(`Snake ${snake.id} hit wall at (${head.x}, ${head.y})`)
       }
 
-      // Check self-collision (don't check first many segments)
-      if (!newSnake.isDead && snake.segments.length > 10) { // Only check if snake is long enough
+              // Check self-collision (disabled for player snake)
+      if (!newSnake.isDead && !snake.isPlayer && snake.segments.length > 10) { // Player snake cannot hit itself
         for (let i = 10; i < snake.segments.length; i++) { // Increased from 6 to 10
           if (checkCollision(head, snake.radius * 0.6, snake.segments[i], snake.radius * 0.6)) {
             newSnake.isDead = true
-            console.log(`Snake ${snake.id} hit itself at segment ${i}`)
+            console.log(`Bot snake ${snake.id} hit itself at segment ${i}`)
             break
           }
         }
@@ -760,10 +760,13 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
     const playerSnake = snakes.find(s => s.isPlayer)
     if (playerSnake && playerSnake.segments.length > 0 && !playerSnake.isDead) {
       const head = playerSnake.segments[0]
+      const newCameraX = Math.max(0, Math.min(WORLD_SIZE - VIEWPORT_SIZE, head.x - VIEWPORT_SIZE / 2))
+      const newCameraY = Math.max(0, Math.min(WORLD_SIZE - VIEWPORT_SIZE, head.y - VIEWPORT_SIZE / 2))
       setCamera({
-        x: Math.max(0, Math.min(WORLD_SIZE - VIEWPORT_SIZE, head.x - VIEWPORT_SIZE / 2)),
-        y: Math.max(0, Math.min(WORLD_SIZE - VIEWPORT_SIZE, head.y - VIEWPORT_SIZE / 2))
+        x: newCameraX,
+        y: newCameraY
       })
+
     }
   }, [snakes, isPreview, WORLD_SIZE])
 
