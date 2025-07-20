@@ -540,6 +540,13 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
     }))
   }, [])
 
+  // Initialize game
+  useEffect(() => {
+    if (isPlaying) {
+      initializeGame()
+    }
+  }, [isPlaying, initializeGame])
+
   // Global event listeners for smooth joystick control
   useEffect(() => {
     if (isPreview || isBot) return
@@ -767,7 +774,7 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
   }, [snakes, camera, isPreview, WORLD_SIZE])
 
   return (
-    <div className="relative min-h-screen bg-[#06010a] text-white grid place-items-center font-mono">
+    <div className={`${isPreview ? 'w-full h-full' : 'relative min-h-screen bg-[#06010a] text-white grid place-items-center font-mono'}`}>
       {/* Top Panel */}
       {!isPreview && (
         <div className="absolute top-4 w-full flex justify-between px-8 items-center">
