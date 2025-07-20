@@ -516,19 +516,20 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
 
     const head = bot.segments[0]
     
-    // In preview mode, occasionally move towards center for visibility
-    if (isPreview && Math.random() < 0.2) {
+    // In preview mode, ensure snakes visit center area frequently
+    if (isPreview) {
       const centerX = WORLD_SIZE / 2
       const centerY = WORLD_SIZE / 2
       
-      // If snake is far from center, move towards it
+      // Calculate distance to center
       const distanceToCenter = Math.sqrt(
         (head.x - centerX) ** 2 + (head.y - centerY) ** 2
       )
       
-      if (distanceToCenter > VIEWPORT_SIZE * 0.8) {
+      // Strong bias towards center if far away, or random chance to visit center
+      if (distanceToCenter > VIEWPORT_SIZE * 0.6 || Math.random() < 0.3) {
         const centerAngle = Math.atan2(centerY - head.y, centerX - head.x)
-        return centerAngle + (Math.random() - 0.5) * 0.2
+        return centerAngle + (Math.random() - 0.5) * 0.3
       }
     }
     
@@ -779,7 +780,7 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
     ctx.fillRect(0, 0, VIEWPORT_SIZE, VIEWPORT_SIZE)
 
     // Draw world boundaries/walls
-    ctx.strokeStyle = '#1c1f2e'
+    ctx.strokeStyle = '#8b5cf6'
     ctx.lineWidth = 3
     ctx.setLineDash([])
     
