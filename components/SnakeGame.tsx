@@ -52,9 +52,9 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
   isPaidLobby = false 
 }) => {
   // Dynamic constants based on game mode
-  const WORLD_SIZE = isPaidLobby ? 1332 : 2000
+  const WORLD_SIZE = isPaidLobby ? 1332 : 2500 // Increased for bot lobby
   const BOT_COUNT = isPaidLobby ? 4 : 10
-  const FOOD_COUNT = isPaidLobby ? 80 : 150
+  const FOOD_COUNT = isPaidLobby ? 80 : 200 // More food for bot lobby
   const GAME_DURATION = 180 // 3 minutes
   const SNAKE_SPEED = 1.8 // Slightly reduced from 2
   const BASE_SNAKE_RADIUS = 8 // Slightly increased from 7
@@ -238,7 +238,10 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
     if (!isBot) {
       const playerStart = isPreview 
         ? { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 }
-        : { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 }
+        : { 
+            x: WORLD_SIZE * 0.3 + Math.random() * WORLD_SIZE * 0.4, // More spread out starting position
+            y: WORLD_SIZE * 0.3 + Math.random() * WORLD_SIZE * 0.4 
+          }
       
       initialSnakes.push({
         id: 'player',
@@ -261,10 +264,24 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
       }
     }
 
-    // Generate bot snakes - ensure we have exactly BOT_COUNT bots
+    // Generate bot snakes with better spacing
     const actualBotCount = BOT_COUNT
     for (let i = 0; i < actualBotCount; i++) {
-      const startPos = generateRandomPosition()
+      let startPos: Position = generateRandomPosition()
+      let attempts = 0
+      
+      // Try to find a position that's not too close to other snakes
+      while (attempts < 20 && initialSnakes.some(snake => {
+        const distance = Math.sqrt(
+          (startPos.x - snake.segments[0].x) ** 2 + 
+          (startPos.y - snake.segments[0].y) ** 2
+        )
+        return distance < 150 // Minimum distance between snakes
+      })) {
+        startPos = generateRandomPosition()
+        attempts++
+      }
+      
       const segments = createSnakeSegments(startPos, 5)
       
       initialSnakes.push({
@@ -442,8 +459,8 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
 
       // Check self-collision (don't check first few segments)
       if (!newSnake.isDead) {
-        for (let i = 4; i < snake.segments.length; i++) {
-          if (checkCollision(head, snake.radius * 0.8, snake.segments[i], snake.radius * 0.8)) {
+        for (let i = 6; i < snake.segments.length; i++) { // Increased from 4 to 6
+          if (checkCollision(head, snake.radius * 0.7, snake.segments[i], snake.radius * 0.7)) {
             newSnake.isDead = true
             console.log(`Snake ${snake.id} hit itself`)
             break
@@ -451,14 +468,14 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
         }
       }
 
-      // Check snake-to-snake collision 
+      // Check snake-to-snake collision with smaller hitbox
       if (!newSnake.isDead) {
         for (const otherSnake of currentSnakes) {
           if (otherSnake.id === snake.id || otherSnake.isDead) continue
           
-          // Check collision with other snake's segments
+          // Check collision with other snake's segments (smaller hitbox)
           for (let i = 0; i < otherSnake.segments.length; i++) {
-            if (checkCollision(head, snake.radius, otherSnake.segments[i], otherSnake.radius)) {
+            if (checkCollision(head, snake.radius * 0.8, otherSnake.segments[i], otherSnake.radius * 0.8)) {
               newSnake.isDead = true
               console.log(`Snake ${snake.id} collided with snake ${otherSnake.id}`)
               break
@@ -499,6 +516,22 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
 
     const head = bot.segments[0]
     
+    // In preview mode, occasionally move towards center for visibility
+    if (isPreview && Math.random() < 0.2) {
+      const centerX = WORLD_SIZE / 2
+      const centerY = WORLD_SIZE / 2
+      
+      // If snake is far from center, move towards it
+      const distanceToCenter = Math.sqrt(
+        (head.x - centerX) ** 2 + (head.y - centerY) ** 2
+      )
+      
+      if (distanceToCenter > VIEWPORT_SIZE * 0.8) {
+        const centerAngle = Math.atan2(centerY - head.y, centerX - head.x)
+        return centerAngle + (Math.random() - 0.5) * 0.2
+      }
+    }
+    
     // Find nearest food
     let nearestFood = allFood[0]
     let minDistance = Infinity
@@ -521,9 +554,9 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
     )
 
     // Add some randomness to make bots less predictable
-    const randomOffset = (Math.random() - 0.5) * 0.3 // Reduced randomness
+    const randomOffset = (Math.random() - 0.5) * 0.2 // Further reduced randomness
     return targetAngle + randomOffset
-  }, [])
+  }, [isPreview, WORLD_SIZE])
 
   // Improved joystick handlers with global event listening for smooth control
   const joystickContainerRef = useRef<HTMLDivElement>(null)
