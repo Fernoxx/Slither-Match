@@ -234,9 +234,12 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
   const initializeGame = useCallback(() => {
     const initialSnakes: Snake[] = []
     
-    // Player snake
-    if (!isBot && !isPreview) {
-      const playerStart = { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 }
+    // Player snake (always add unless it's a bot-only preview)
+    if (!isBot) {
+      const playerStart = isPreview 
+        ? { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 }
+        : { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 }
+      
       initialSnakes.push({
         id: 'player',
         segments: createSnakeSegments(playerStart, 5),
@@ -249,34 +252,35 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
         isDead: false
       })
       
-      // Set camera to follow player
-      setCamera({
-        x: playerStart.x - VIEWPORT_SIZE / 2,
-        y: playerStart.y - VIEWPORT_SIZE / 2
-      })
+      // Set camera to follow player (unless preview)
+      if (!isPreview) {
+        setCamera({
+          x: Math.max(0, Math.min(WORLD_SIZE - VIEWPORT_SIZE, playerStart.x - VIEWPORT_SIZE / 2)),
+          y: Math.max(0, Math.min(WORLD_SIZE - VIEWPORT_SIZE, playerStart.y - VIEWPORT_SIZE / 2))
+        })
+      }
     }
 
-    // Generate bot snakes
-    const bots: Snake[] = []
-    for (let i = 0; i < BOT_COUNT; i++) {
+    // Generate bot snakes - ensure we have exactly BOT_COUNT bots
+    const actualBotCount = BOT_COUNT
+    for (let i = 0; i < actualBotCount; i++) {
       const startPos = generateRandomPosition()
       const segments = createSnakeSegments(startPos, 5)
       
-      bots.push({
+      initialSnakes.push({
         id: `bot${i}`,
         isPlayer: false,
         segments,
         color: getSnakeColor(`bot${i}`),
         score: isPreview ? Math.floor(Math.random() * 50) + 10 : 0,
-        speed: SNAKE_SPEED + Math.random() * 0.3,
+        speed: SNAKE_SPEED + Math.random() * 0.4 - 0.2, // Vary speed more
         angle: Math.random() * 2 * Math.PI,
         radius: BASE_SNAKE_RADIUS + (isPreview ? Math.floor(Math.random() * 6) : 0),
         isDead: false
       })
     }
 
-    // Add bots to initial snakes
-    initialSnakes.push(...bots)
+    console.log(`Initialized ${initialSnakes.length} snakes (${initialSnakes.filter(s => s.isPlayer).length} player, ${initialSnakes.filter(s => !s.isPlayer).length} bots)`)
 
     setSnakes(initialSnakes)
 
@@ -606,11 +610,22 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
           setPlayerScore(prev => prev + scoreIncrease)
         }
 
-        // Check if player died
+        // Check win conditions and game end
         const playerSnake = finalSnakes.find(s => s.isPlayer)
-        if (playerSnake?.isDead && !isPreview) {
-          setGameEnded(true)
-          onGameOver?.(playerScore + scoreIncrease)
+        const aliveSnakes = finalSnakes.filter(s => !s.isDead)
+        const aliveBots = aliveSnakes.filter(s => !s.isPlayer)
+        
+        if (!isPreview) {
+          // Check if player died
+          if (playerSnake?.isDead) {
+            setGameEnded(true)
+            onGameOver?.(playerScore + scoreIncrease)
+          }
+          // Check if player won (last snake alive or highest score when time runs out)
+          else if (aliveBots.length === 0 && playerSnake && !playerSnake.isDead) {
+            setGameEnded(true)
+            onGameWin?.(playerScore + scoreIncrease, true)
+          }
         }
 
         return finalSnakes
@@ -628,7 +643,17 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
       setTimeLeft(prev => {
         if (prev <= 1) {
           setGameEnded(true)
-          onGameOver?.(playerScore)
+          // Check if player has highest score when time runs out
+          const playerSnake = snakes.find(s => s.isPlayer)
+          const allScores = snakes.map(s => s.score)
+          const maxScore = Math.max(...allScores)
+          const isWinner = playerSnake && playerSnake.score === maxScore
+          
+          if (isWinner) {
+            onGameWin?.(playerScore, true)
+          } else {
+            onGameOver?.(playerScore)
+          }
           return 0
         }
         return prev - 1

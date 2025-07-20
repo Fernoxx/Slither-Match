@@ -21,6 +21,8 @@ export default function Home() {
   const [gameScore, setGameScore] = useState(0)
   const [gameEnded, setGameEnded] = useState(false)
   const [isPaidLobby, setIsPaidLobby] = useState(false)
+  const [isWinner, setIsWinner] = useState(false)
+  const [gameStartTime, setGameStartTime] = useState<number | null>(null)
 
   // Connect Farcaster wallet (only for paid lobby)
   const connectWallet = useCallback(async () => {
@@ -59,6 +61,7 @@ export default function Home() {
     setCurrentView('bot-lobby')
     setIsPaidLobby(false)
     setPlayers([])
+    setGameStartTime(Date.now()) // Track start time
     setGameStarted(true) // Start immediately
   }, [])
 
@@ -85,11 +88,36 @@ export default function Home() {
   }, [connectWallet, walletAddress, currentView])
 
   // Handle game end
-  const handleGameEnd = useCallback((score: number, isWinner: boolean = false) => {
+  const handleGameEnd = useCallback((score: number, winner: boolean = false) => {
     setGameScore(score)
+    setIsWinner(winner)
     setGameEnded(true)
     setGameStarted(false)
   }, [])
+
+  // Share win to Farcaster
+  const shareWin = useCallback(() => {
+    const gameTime = gameStartTime ? Math.floor((Date.now() - gameStartTime) / 1000) : 0
+    const castText = `🐍 I won the SlitherMatch bot lobby in ${gameTime} seconds! 🏆\n\nPlay now: ${window.location.origin}`
+    
+    // Try to post to Farcaster via parent frame
+    try {
+      if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: 'share_cast',
+          text: castText
+        }, '*')
+      } else {
+        // Fallback to copy to clipboard
+        navigator.clipboard.writeText(castText)
+        alert('Win message copied to clipboard! Share it on Farcaster!')
+      }
+    } catch (error) {
+      // Fallback to copy to clipboard
+      navigator.clipboard.writeText(castText)
+      alert('Win message copied to clipboard! Share it on Farcaster!')
+    }
+  }, [gameStartTime])
 
   // Reset to home
   const resetToHome = useCallback(() => {
@@ -99,6 +127,8 @@ export default function Home() {
     setCountdown(null)
     setPlayers([])
     setGameScore(0)
+    setIsWinner(false)
+    setGameStartTime(null)
   }, [])
 
   return (
@@ -153,8 +183,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Preview Game Box - 444x444px */}
-          <div className="bg-[#0a0c1a] border border-[#1c1f2e] rounded-lg p-2" style={{ width: '448px', height: '448px' }}>
+                     {/* Preview Game Box - 444x444px */}
+           <div className="bg-[#0a0c1a] rounded-lg overflow-hidden" style={{ width: '444px', height: '444px' }}>
             <SnakeGame 
               isPlaying={true}
               isBot={true} 
@@ -238,48 +268,59 @@ export default function Home() {
         </div>
       )}
 
-      {gameEnded && (
-        <div className="text-center z-10">
-          <div className="bg-[#1a1a2e] border border-[#2d2d5e] rounded-lg p-8 mb-6">
-            <h2 className="text-3xl font-bold mb-4 text-green-400">
-              🎉 Game Over!
-            </h2>
-            <div className="text-2xl font-bold text-cyan-400 mb-4">
-              Final Score: {gameScore}
-            </div>
-            <div className="text-lg text-gray-300 mb-6">
-              {isPaidLobby 
-                ? (gameScore > 50 ? "🏆 Congratulations! You won the prize pool!" : "Better luck next time!") 
-                : "Thanks for playing with the bots!"
-              }
-            </div>
-          </div>
+             {gameEnded && (
+         <div className="text-center z-10">
+           <div className="bg-[#1a1a2e] border border-[#2d2d5e] rounded-lg p-8 mb-6">
+             <h2 className="text-3xl font-bold mb-4 text-green-400">
+               {isWinner ? "🎉 You Won!" : "🎮 Game Over!"}
+             </h2>
+             <div className="text-2xl font-bold text-cyan-400 mb-4">
+               Final Score: {gameScore}
+             </div>
+             <div className="text-lg text-gray-300 mb-6">
+               {isPaidLobby 
+                 ? (isWinner ? "🏆 Congratulations! You won the prize pool!" : "Better luck next time!") 
+                 : (isWinner ? "🏆 You defeated all the bots!" : "Thanks for playing with the bots!")
+               }
+             </div>
+             
+             {/* Share button for winners */}
+             {isWinner && (
+               <button
+                 onClick={shareWin}
+                 className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg 
+                            transition-all duration-300 transform hover:scale-105 mb-4"
+               >
+                 📤 Share Win
+               </button>
+             )}
+           </div>
 
-          <div className="flex gap-4">
-            <button
-              onClick={resetToHome}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg 
-                         transition-all duration-300 transform hover:scale-105"
-            >
-              🏠 Back to Home
-            </button>
-            <button
-              onClick={() => {
-                setGameEnded(false)
-                if (currentView === 'bot-lobby') {
-                  joinBotLobby()
-                } else {
-                  joinPaidLobby()
-                }
-              }}
-              className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg 
-                         transition-all duration-300 transform hover:scale-105"
-            >
-              🔄 Play Again
-            </button>
-          </div>
-        </div>
-      )}
+           <div className="flex gap-4 justify-center">
+             <button
+               onClick={resetToHome}
+               className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg 
+                          transition-all duration-300 transform hover:scale-105"
+             >
+               🏠 Back to Home
+             </button>
+             <button
+               onClick={() => {
+                 setGameEnded(false)
+                 if (currentView === 'bot-lobby') {
+                   joinBotLobby()
+                 } else {
+                   joinPaidLobby()
+                 }
+               }}
+               className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg 
+                          transition-all duration-300 transform hover:scale-105"
+             >
+               🔄 Play Again
+             </button>
+           </div>
+         </div>
+       )}
     </div>
   )
 }
