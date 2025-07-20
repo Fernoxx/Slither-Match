@@ -450,19 +450,19 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
         }
       }
 
-      // Check wall collision
-      if (head.x - snake.radius <= 0 || head.x + snake.radius >= WORLD_SIZE ||
-          head.y - snake.radius <= 0 || head.y + snake.radius >= WORLD_SIZE) {
+      // Check wall collision with margin
+      if (head.x <= snake.radius || head.x >= WORLD_SIZE - snake.radius ||
+          head.y <= snake.radius || head.y >= WORLD_SIZE - snake.radius) {
         newSnake.isDead = true
-        console.log(`Snake ${snake.id} hit wall`)
+        console.log(`Snake ${snake.id} hit wall at (${head.x}, ${head.y})`)
       }
 
-      // Check self-collision (don't check first few segments)
-      if (!newSnake.isDead) {
-        for (let i = 6; i < snake.segments.length; i++) { // Increased from 4 to 6
-          if (checkCollision(head, snake.radius * 0.7, snake.segments[i], snake.radius * 0.7)) {
+      // Check self-collision (don't check first many segments)
+      if (!newSnake.isDead && snake.segments.length > 10) { // Only check if snake is long enough
+        for (let i = 10; i < snake.segments.length; i++) { // Increased from 6 to 10
+          if (checkCollision(head, snake.radius * 0.6, snake.segments[i], snake.radius * 0.6)) {
             newSnake.isDead = true
-            console.log(`Snake ${snake.id} hit itself`)
+            console.log(`Snake ${snake.id} hit itself at segment ${i}`)
             break
           }
         }
@@ -473,11 +473,11 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
         for (const otherSnake of currentSnakes) {
           if (otherSnake.id === snake.id || otherSnake.isDead) continue
           
-          // Check collision with other snake's segments (smaller hitbox)
+          // Check collision with other snake's segments (much smaller hitbox)
           for (let i = 0; i < otherSnake.segments.length; i++) {
-            if (checkCollision(head, snake.radius * 0.8, otherSnake.segments[i], otherSnake.radius * 0.8)) {
+            if (checkCollision(head, snake.radius * 0.7, otherSnake.segments[i], otherSnake.radius * 0.7)) {
               newSnake.isDead = true
-              console.log(`Snake ${snake.id} collided with snake ${otherSnake.id}`)
+              console.log(`Snake ${snake.id} collided with snake ${otherSnake.id} at segment ${i}`)
               break
             }
           }
@@ -748,24 +748,11 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
   // Camera follow player
   useEffect(() => {
     if (isPreview) {
-      // In preview mode, follow the action or center view
-      const aliveSnakes = snakes.filter(s => !s.isDead)
-      if (aliveSnakes.length > 0) {
-        // Calculate center of all alive snakes
-        const centerX = aliveSnakes.reduce((sum, s) => sum + s.segments[0].x, 0) / aliveSnakes.length
-        const centerY = aliveSnakes.reduce((sum, s) => sum + s.segments[0].y, 0) / aliveSnakes.length
-        
-        setCamera({
-          x: Math.max(0, Math.min(WORLD_SIZE - VIEWPORT_SIZE, centerX - VIEWPORT_SIZE / 2)),
-          y: Math.max(0, Math.min(WORLD_SIZE - VIEWPORT_SIZE, centerY - VIEWPORT_SIZE / 2))
-        })
-      } else {
-        // Default center view
-        setCamera({
-          x: (WORLD_SIZE - VIEWPORT_SIZE) / 2,
-          y: (WORLD_SIZE - VIEWPORT_SIZE) / 2
-        })
-      }
+      // In preview mode, keep camera static at center
+      setCamera({
+        x: (WORLD_SIZE - VIEWPORT_SIZE) / 2,
+        y: (WORLD_SIZE - VIEWPORT_SIZE) / 2
+      })
       return
     }
 
@@ -839,12 +826,9 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
       if (screenX >= -f.radius && screenX <= VIEWPORT_SIZE + f.radius && 
           screenY >= -f.radius && screenY <= VIEWPORT_SIZE + f.radius) {
         ctx.fillStyle = f.color
-        ctx.shadowBlur = 8
-        ctx.shadowColor = f.color
         ctx.beginPath()
         ctx.arc(screenX, screenY, f.radius, 0, 2 * Math.PI)
         ctx.fill()
-        ctx.shadowBlur = 0
       }
     })
 
@@ -862,14 +846,11 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
           
           const radius = index === 0 ? snake.radius + 1 : snake.radius
           
-          // Draw snake segment with glow
+          // Draw snake segment
           ctx.fillStyle = snake.color
-          ctx.shadowBlur = 12
-          ctx.shadowColor = snake.color
           ctx.beginPath()
           ctx.arc(screenX, screenY, radius, 0, 2 * Math.PI)
           ctx.fill()
-          ctx.shadowBlur = 0
           
           // Draw eyes on head
           if (index === 0) {
@@ -914,26 +895,21 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
     ctx.fillRect(0, 0, 2, mapSize) // Left wall
     ctx.fillRect(mapSize - 2, 0, 2, mapSize) // Right wall
 
-    // Draw viewport indicator with neon glow
+    // Draw viewport indicator
     ctx.strokeStyle = '#8b5cf6'
     ctx.lineWidth = 1
-    ctx.shadowBlur = 3
-    ctx.shadowColor = '#8b5cf6'
     ctx.strokeRect(
       camera.x * scale,
       camera.y * scale,
       VIEWPORT_SIZE * scale,
       VIEWPORT_SIZE * scale
     )
-    ctx.shadowBlur = 0
 
-    // Draw snakes as glowing dots
+    // Draw snakes as dots
     snakes.forEach(snake => {
       if (snake.segments.length > 0 && (!snake.isDead || isPreview)) {
         const head = snake.segments[0]
         ctx.fillStyle = snake.color
-        ctx.shadowBlur = 4
-        ctx.shadowColor = snake.color
         ctx.beginPath()
         ctx.arc(
           head.x * scale,
@@ -943,7 +919,6 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
           2 * Math.PI
         )
         ctx.fill()
-        ctx.shadowBlur = 0
         
         // Draw player snake with extra highlight
         if (snake.isPlayer) {
