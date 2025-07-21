@@ -54,9 +54,9 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
   // Dynamic constants based on game mode
   const WORLD_SIZE = isPaidLobby ? 1332 : 2500 // Increased for bot lobby
   const BOT_COUNT = isPaidLobby ? 4 : 10
-  const FOOD_COUNT = isPaidLobby ? 80 : 200 // More food for bot lobby
+  const FOOD_COUNT = isPaidLobby ? 150 : 400 // Significantly increased food count
   const GAME_DURATION = 180 // 3 minutes
-  const SNAKE_SPEED = 1.8 // Slightly reduced from 2
+  const SNAKE_SPEED = 1.5 // Reduced speed for better survival
   const BASE_SNAKE_RADIUS = 8 // Slightly increased from 7
   const JOYSTICK_SIZE = 80
   const KNOB_SIZE = 30
@@ -406,7 +406,7 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
 
       // Check food collision
       for (let i = newFood.length - 1; i >= 0; i--) {
-        if (checkCollision(head, snake.radius * 0.9, newFood[i].position, newFood[i].radius)) {
+        if (checkCollision(head, snake.radius * 1.2, newFood[i].position, newFood[i].radius)) {
           // Eat food
           newFood.splice(i, 1)
           newSnake.score += 1
@@ -465,9 +465,9 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
         for (const otherSnake of currentSnakes) {
           if (otherSnake.id === snake.id || otherSnake.isDead) continue
           
-          // Check collision with other snake's segments (much smaller hitbox)
+          // Check collision with other snake's segments (smaller hitbox for better survival)
           for (let i = 0; i < otherSnake.segments.length; i++) {
-            if (checkCollision(head, snake.radius * 0.7, otherSnake.segments[i], otherSnake.radius * 0.7)) {
+            if (checkCollision(head, snake.radius * 0.5, otherSnake.segments[i], otherSnake.radius * 0.5)) {
               newSnake.isDead = true
               console.log(`Snake ${snake.id} collided with snake ${otherSnake.id} at segment ${i}`)
               break
