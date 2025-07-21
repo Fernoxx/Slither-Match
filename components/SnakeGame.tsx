@@ -54,7 +54,7 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
   // Dynamic constants based on game mode
   const WORLD_SIZE = isPaidLobby ? 1332 : 2500 // Increased for bot lobby
   const BOT_COUNT = isPaidLobby ? 4 : 10
-  const FOOD_COUNT = isPaidLobby ? 150 : 400 // Significantly increased food count
+  const FOOD_COUNT = isPaidLobby ? 250 : 600 // Much more food available
   const GAME_DURATION = 180 // 3 minutes
   const SNAKE_SPEED = 1.5 // Reduced speed for better survival
   const BASE_SNAKE_RADIUS = 8 // Slightly increased from 7
