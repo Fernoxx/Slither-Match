@@ -450,9 +450,9 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
         }
       }
 
-      // Check wall collision with margin
-      if (head.x <= snake.radius || head.x >= WORLD_SIZE - snake.radius ||
-          head.y <= snake.radius || head.y >= WORLD_SIZE - snake.radius) {
+      // Check wall collision with margin - but only in non-preview mode
+      if (!isPreview && (head.x <= snake.radius || head.x >= WORLD_SIZE - snake.radius ||
+          head.y <= snake.radius || head.y >= WORLD_SIZE - snake.radius)) {
         newSnake.isDead = true
         console.log(`Snake ${snake.id} hit wall at (${head.x}, ${head.y})`)
       }
@@ -460,7 +460,7 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
       // Check self-collision (DISABLED FOR ALL SNAKES - no snake can hit itself)
       // Self-collision disabled - snakes can cross their own body
       
-      // Check snake-to-snake collision with smaller hitbox
+      // Check snake-to-snake collision with smaller hitbox - but enable collision in preview mode too
       if (!newSnake.isDead) {
         for (const otherSnake of currentSnakes) {
           if (otherSnake.id === snake.id || otherSnake.isDead) continue
@@ -477,7 +477,7 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
         }
       }
 
-      // If snake died, drop food for each segment
+      // If snake died, drop food for each segment - works in all modes
       if (newSnake.isDead && !snake.isDead) {
         console.log(`Snake ${snake.id} died, dropping ${snake.segments.length} food pieces`)
         snake.segments.forEach((segment, index) => {
@@ -699,9 +699,38 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
           setPlayerScore(prev => prev + scoreIncrease)
         }
 
+        // In preview mode, respawn dead snakes to keep demo active
+        let cleanedSnakes = finalSnakes
+        if (isPreview) {
+          // Respawn dead snakes in preview mode
+          cleanedSnakes = finalSnakes.map(snake => {
+            if (snake.isDead && Math.random() < 0.02) { // 2% chance per frame to respawn
+              const newStartPos = generateRandomPosition()
+              return {
+                ...snake,
+                isDead: false,
+                segments: createSnakeSegments(newStartPos, 5),
+                angle: Math.random() * 2 * Math.PI,
+                radius: BASE_SNAKE_RADIUS + Math.floor(Math.random() * 6),
+                score: Math.floor(Math.random() * 50) + 10
+              }
+            }
+            return snake
+          })
+        } else {
+          // Clean up dead snakes in non-preview mode
+          cleanedSnakes = finalSnakes.filter(snake => {
+            if (snake.isDead && !snake.isPlayer) {
+              // Remove dead bot snakes after they've been dead
+              return false
+            }
+            return true
+          })
+        }
+
         // Check win conditions and game end
-        const playerSnake = finalSnakes.find(s => s.isPlayer)
-        const aliveSnakes = finalSnakes.filter(s => !s.isDead)
+        const playerSnake = cleanedSnakes.find(s => s.isPlayer)
+        const aliveSnakes = cleanedSnakes.filter(s => !s.isDead)
         const aliveBots = aliveSnakes.filter(s => !s.isPlayer)
         
         if (!isPreview) {
@@ -717,7 +746,7 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
           }
         }
 
-        return finalSnakes
+        return cleanedSnakes
       })
     }, 16) // ~60 FPS
 
@@ -766,13 +795,15 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
     const playerSnake = snakes.find(s => s.isPlayer)
     if (playerSnake && playerSnake.segments.length > 0 && !playerSnake.isDead) {
       const head = playerSnake.segments[0]
+      
+      // Camera follows player smoothly, even when player moves to edges
       const newCameraX = Math.max(0, Math.min(WORLD_SIZE - VIEWPORT_SIZE, head.x - VIEWPORT_SIZE / 2))
       const newCameraY = Math.max(0, Math.min(WORLD_SIZE - VIEWPORT_SIZE, head.y - VIEWPORT_SIZE / 2))
+      
       setCamera({
         x: newCameraX,
         y: newCameraY
       })
-
     }
   }, [snakes, isPreview, WORLD_SIZE])
 
@@ -842,9 +873,9 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
       }
     })
 
-    // Draw snakes with proper visibility
+    // Draw snakes with proper visibility - dead snakes should not be drawn
     snakes.forEach(snake => {
-      if (snake.isDead && !isPreview) return
+      if (snake.isDead) return // Dead snakes are never drawn, regardless of mode
 
       snake.segments.forEach((segment, index) => {
         const screenX = segment.x - camera.x
@@ -885,61 +916,63 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
   // Mini-map drawing
   useEffect(() => {
     const canvas = miniMapRef.current
-    if (!canvas) return
+    if (!canvas || isPreview) return // Don't draw minimap in preview mode
 
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const mapSize = 100
+    const mapSize = 60 // Canvas size is 60x60 as set in JSX
     const scale = mapSize / WORLD_SIZE
-    const wallThickness = 10
 
     // Clear mini-map with neon theme
     ctx.fillStyle = '#0a0c1a'
     ctx.fillRect(0, 0, mapSize, mapSize)
 
     // Draw world boundaries on mini-map with neon colors
-    ctx.fillStyle = '#1c1f2e'
-    ctx.fillRect(0, 0, mapSize, 2) // Top wall
-    ctx.fillRect(0, mapSize - 2, mapSize, 2) // Bottom wall  
-    ctx.fillRect(0, 0, 2, mapSize) // Left wall
-    ctx.fillRect(mapSize - 2, 0, 2, mapSize) // Right wall
-
-    // Draw viewport indicator (CLAMPED TO MINIMAP BOUNDS)
     ctx.strokeStyle = '#8b5cf6'
     ctx.lineWidth = 1
-    
-    // Clamp viewport position to minimap bounds
-    const clampedCameraX = Math.max(0, Math.min(WORLD_SIZE - VIEWPORT_SIZE, camera.x))
-    const clampedCameraY = Math.max(0, Math.min(WORLD_SIZE - VIEWPORT_SIZE, camera.y))
-    
-    ctx.strokeRect(
-      clampedCameraX * scale,
-      clampedCameraY * scale,
-      VIEWPORT_SIZE * scale,
-      VIEWPORT_SIZE * scale
-    )
+    ctx.strokeRect(0, 0, mapSize, mapSize)
 
-    // Draw snakes as dots
+    // Draw viewport indicator - show current camera view
+    ctx.strokeStyle = '#00ffff'
+    ctx.lineWidth = 1
+    
+    // Calculate viewport position on minimap
+    const viewportX = (camera.x * scale)
+    const viewportY = (camera.y * scale)
+    const viewportWidth = (VIEWPORT_SIZE * scale)
+    const viewportHeight = (VIEWPORT_SIZE * scale)
+    
+    // Draw viewport rectangle - this shows where the player is looking
+    ctx.strokeRect(viewportX, viewportY, viewportWidth, viewportHeight)
+
+    // Draw all live snakes as dots on minimap
     snakes.forEach(snake => {
-      if (snake.segments.length > 0 && (!snake.isDead || isPreview)) {
+      if (snake.segments.length > 0 && !snake.isDead) {
         const head = snake.segments[0]
-        ctx.fillStyle = snake.color
-        ctx.beginPath()
-        ctx.arc(
-          head.x * scale,
-          head.y * scale,
-          Math.max(2, snake.radius * scale * 0.8),
-          0,
-          2 * Math.PI
-        )
-        ctx.fill()
         
-        // Draw player snake with extra highlight
-        if (snake.isPlayer) {
-          ctx.strokeStyle = '#ffffff'
-          ctx.lineWidth = 1
-          ctx.stroke()
+        // Make sure snake position is within world bounds
+        if (head.x >= 0 && head.x <= WORLD_SIZE && head.y >= 0 && head.y <= WORLD_SIZE) {
+          ctx.fillStyle = snake.color
+          ctx.beginPath()
+          
+          // Draw snake as a larger dot for better visibility
+          const dotSize = snake.isPlayer ? 3 : 2
+          ctx.arc(
+            head.x * scale,
+            head.y * scale,
+            dotSize,
+            0,
+            2 * Math.PI
+          )
+          ctx.fill()
+          
+          // Draw player snake with extra white outline for visibility
+          if (snake.isPlayer) {
+            ctx.strokeStyle = '#ffffff'
+            ctx.lineWidth = 1
+            ctx.stroke()
+          }
         }
       }
     })
