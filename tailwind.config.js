@@ -44,7 +44,6 @@ module.exports = {
       },
       boxShadow: {
         'neon': '0 0 5px currentColor, 0 0 20px currentColor, 0 0 35px currentColor',
-        'neon-lg': '0 0 10px currentColor, 0 0 40px currentColor, 0 0 80px currentColor',
       }
     },
   },
