@@ -11,6 +11,7 @@
     "deploy:sepolia": "npx hardhat run scripts/deploy-sepolia.js --network baseSepolia",
     "deploy:mainnet": "npx hardhat run scripts/deploy-mainnet.js --network baseMainnet",
     "verify:sepolia": "npx hardhat verify --network baseSepolia",
+    "verify:mainnet": "npx hardhat verify --network baseMainnet",
     "test:contracts": "npx hardhat test",
     "node:local": "npx hardhat node"
   },
@@ -46,6 +47,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tailwind-merge": "^2.5.4",
+    "tailwindcss-animate": "^1.0.7",
     "viem": "^2.21.53",
     "wagmi": "^2.14.8"
   }
