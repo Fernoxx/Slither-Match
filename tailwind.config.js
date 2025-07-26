@@ -17,7 +17,7 @@ module.exports = {
           purple: '#8000ff',
           yellow: '#ffff00',
         },
-        // Game-specific colors
+        
         game: {
           bg: '#06010a',
           canvas: '#0a0c1a',
