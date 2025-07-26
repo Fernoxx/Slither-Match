@@ -299,9 +299,6 @@ export default function Home() {
                  } else {
                    joinPaidLobby()
                  }
-               }}
-               className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg 
-                          transition-all duration-300 transform hover:scale-105"
              >
                🔄 Play Again
              </button>
