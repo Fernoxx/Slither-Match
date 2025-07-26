@@ -56,7 +56,8 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
   // Dynamic constants based on game mode
   const WORLD_SIZE = isPaidLobby ? 1332 : 2500 // Increased for bot lobby
   const BOT_COUNT = isPaidLobby ? 4 : (isCasualLobby ? 0 : 10) // No bots in casual lobby
-  const FOOD_COUNT = isBot ? 600 : (isPaidLobby ? 250 : (isCasualLobby ? 150 : 200)) // Updated food counts
+  const FOOD_COUNT = isBot ? 300 : (isPaidLobby ? 150 : (isCasualLobby ? 100 : 150)) // Reduced food counts for performance
+  const MAX_FOOD = FOOD_COUNT * 3 // Cap maximum food to prevent lag
   const GAME_DURATION = 180 // 3 minutes
   const SNAKE_SPEED = 1.8 // Slightly reduced from 2
   const BASE_SNAKE_RADIUS = 8 // Slightly increased from 7
@@ -299,15 +300,13 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
       })
     }
 
-    console.log(`Initialized ${initialSnakes.length} snakes (${initialSnakes.filter(s => s.isPlayer).length} player, ${initialSnakes.filter(s => !s.isPlayer).length} bots)`)
-
-    setSnakes(initialSnakes)
-
     // Generate initial food
     const initialFood: Food[] = []
     for (let i = 0; i < FOOD_COUNT; i++) {
       initialFood.push(generateFood())
     }
+
+    setSnakes(initialSnakes)
     setFood(initialFood)
     setPlayerScore(0)
     setGameStarted(true)
@@ -350,7 +349,6 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
       // Mark snake as dead if it hits a wall (unless in preview mode)
       if (!isPreview) {
         newSnake.isDead = true
-        console.log(`Snake ${snake.id} hit wall at position:`, newHead.x, newHead.y, 'radius:', snake.radius)
       } else {
         // In preview mode, wrap around or bounce
         if (newHead.x < snake.radius) newHead.x = WORLD_SIZE - snake.radius
@@ -395,9 +393,9 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
     return distance < (radius1 + radius2) * 0.9 // Slightly more forgiving collision
   }, [])
 
-  // Update snake collisions
+  // Check collisions for all snakes and update accordingly
   const updateCollisions = useCallback((currentSnakes: Snake[], currentFood: Food[]): [Snake[], Food[], number] => {
-    let newFood = [...currentFood]
+    let newFood: Food[] = [...currentFood] // Start with current food
     let scoreIncrease = 0
 
     const updatedSnakes = currentSnakes.map(snake => {
@@ -407,48 +405,31 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
       const newSnake = { ...snake }
 
       // Check food collision
-      for (let i = newFood.length - 1; i >= 0; i--) {
-        if (checkCollision(head, snake.radius * 0.9, newFood[i].position, newFood[i].radius)) {
-          // Eat food
+      for (let i = 0; i < newFood.length; i++) {
+        const food = newFood[i]
+        if (checkCollision(head, snake.radius, food.position, food.radius)) {
+          // Remove eaten food
           newFood.splice(i, 1)
-          newSnake.score += 1
-          newSnake.radius = Math.min(snake.radius + 0.2, 15) // Grow but cap size
+          i-- // Adjust index after removal
           
-          // Add new segment properly at tail
-          const tail = snake.segments[snake.segments.length - 1]
-          const secondToTail = snake.segments.length > 1 ? snake.segments[snake.segments.length - 2] : tail
-          
-          // Calculate direction from second-to-tail to tail
-          const dx = tail.x - secondToTail.x
-          const dy = tail.y - secondToTail.y
-          const distance = Math.sqrt(dx * dx + dy * dy)
-          
-          let newSegmentX, newSegmentY
-          if (distance > 0) {
-            // Place new segment behind the tail
-            const unitX = dx / distance
-            const unitY = dy / distance
-            newSegmentX = tail.x + unitX * snake.radius * 1.5
-            newSegmentY = tail.y + unitY * snake.radius * 1.5
-          } else {
-            // Fallback if segments are too close
-            newSegmentX = tail.x + snake.radius * 1.5
-            newSegmentY = tail.y
+          // Grow snake by adding segments
+          const growthSegments = 3
+          const lastSegment = snake.segments[snake.segments.length - 1]
+          for (let j = 0; j < growthSegments; j++) {
+            newSnake.segments.push({ ...lastSegment })
           }
           
-          // Add new segment
-          newSnake.segments = [...snake.segments, {
-            x: newSegmentX,
-            y: newSegmentY
-          }]
-
+          // Update snake properties
+          newSnake.score = (newSnake.score || 0) + 10
           if (snake.isPlayer) {
-            scoreIncrease += 1
+            scoreIncrease += 10
           }
           
-          // Spawn new food
+          // Add new food to replace eaten one
           newFood.push(generateFood())
-          break
+          
+          // Grow snake slightly
+          newSnake.radius = Math.min(25, snake.radius * 1.02)
         }
       }
 
@@ -456,7 +437,6 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
       if (head.x <= snake.radius || head.x >= WORLD_SIZE - snake.radius ||
           head.y <= snake.radius || head.y >= WORLD_SIZE - snake.radius) {
         newSnake.isDead = true
-        console.log(`Snake ${snake.id} hit wall at (${head.x}, ${head.y})`)
       }
 
       // Check self-collision (DISABLED FOR ALL SNAKES - no snake can hit itself)
@@ -471,7 +451,6 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
           for (let i = 0; i < otherSnake.segments.length; i++) {
             if (checkCollision(head, snake.radius * 0.7, otherSnake.segments[i], otherSnake.radius * 0.7)) {
               newSnake.isDead = true
-              console.log(`Snake ${snake.id} collided with snake ${otherSnake.id} at segment ${i}`)
               break
             }
           }
@@ -481,8 +460,12 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
 
       // If snake died, drop food for each segment
       if (newSnake.isDead && !snake.isDead) {
-        console.log(`Snake ${snake.id} died, dropping ${snake.segments.length} food pieces`)
-        snake.segments.forEach((segment, index) => {
+        
+        // Only drop food if we haven't exceeded the max food limit
+        const foodToDrop = Math.min(snake.segments.length, MAX_FOOD - newFood.length)
+        
+        for (let i = 0; i < foodToDrop; i++) {
+          const segment = snake.segments[i]
           // Add some randomness to food placement
           const offsetX = (Math.random() - 0.5) * snake.radius * 2
           const offsetY = (Math.random() - 0.5) * snake.radius * 2
@@ -495,14 +478,14 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
             color: COLORS.FOOD[Math.floor(Math.random() * COLORS.FOOD.length)],
             radius: 4 + Math.random() * 2 // Vary food size
           })
-        })
+        }
       }
 
       return newSnake
     })
 
     return [updatedSnakes, newFood, scoreIncrease]
-  }, [checkCollision, generateFood])
+  }, [checkCollision, generateFood, MAX_FOOD])
 
   // Update bot AI with limited turning radius
   const updateBotAI = useCallback((bot: Snake, allSnakes: Snake[], allFood: Food[]): number | null => {
@@ -730,10 +713,10 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
         })
 
         // Apply collision updates
-        const [finalSnakes, newFood, scoreIncrease] = updateCollisions(updatedSnakes, food)
+        const [finalSnakes, updatedFood, scoreIncrease] = updateCollisions(updatedSnakes, food)
         
-        // Add new food to existing food
-        setFood(prevFood => [...prevFood, ...newFood])
+        // Update food state with the new food array
+        setFood(updatedFood)
         
         // Update score
         if (scoreIncrease > 0) {
