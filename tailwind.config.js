@@ -15,7 +15,6 @@ module.exports = {
           green: '#00ff41',
           pink: '#ff0080',
           purple: '#8000ff',
-          yellow: '#ffff00',
         },
         
         game: {
