@@ -11,7 +11,6 @@
     "deploy:sepolia": "npx hardhat run scripts/deploy-sepolia.js --network baseSepolia",
     "deploy:mainnet": "npx hardhat run scripts/deploy-mainnet.js --network baseMainnet",
     "verify:sepolia": "npx hardhat verify --network baseSepolia",
-    "verify:mainnet": "npx hardhat verify --network baseMainnet",
     "test:contracts": "npx hardhat test",
     "node:local": "npx hardhat node"
   },
