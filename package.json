@@ -30,7 +30,6 @@
     "hardhat": "^2.22.19",
     "postcss": "^8.4.39",
     "tailwindcss": "^3.4.6",
-    "typescript": "^5.6.3"
   },
   "dependencies": {
     "@base-org/account": "^1.0.2",
