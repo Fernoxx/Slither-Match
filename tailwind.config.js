@@ -1,4 +1,4 @@
-
+/** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
@@ -10,12 +10,15 @@ module.exports = {
         mono: ['ui-monospace', 'SFMono-Regular', 'SF Mono', 'Consolas', 'Liberation Mono', 'Menlo', 'monospace'],
       },
       colors: {
+        // Custom neon colors for the game
         neon: {
           cyan: '#00ffff',
+          green: '#00ff41',
           pink: '#ff0080',
           purple: '#8000ff',
+          yellow: '#ffff00',
         },
-        
+        // Game-specific colors
         game: {
           bg: '#06010a',
           canvas: '#0a0c1a',
@@ -42,6 +45,7 @@ module.exports = {
       },
       boxShadow: {
         'neon': '0 0 5px currentColor, 0 0 20px currentColor, 0 0 35px currentColor',
+        'neon-lg': '0 0 10px currentColor, 0 0 40px currentColor, 0 0 80px currentColor',
       }
     },
   },
