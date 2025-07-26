@@ -56,8 +56,8 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
   // Dynamic constants based on game mode
   const WORLD_SIZE = isPaidLobby ? 1332 : 2500 // Increased for bot lobby
   const BOT_COUNT = isPaidLobby ? 4 : (isCasualLobby ? 0 : 10) // No bots in casual lobby
-  const FOOD_COUNT = isBot ? 300 : (isPaidLobby ? 150 : (isCasualLobby ? 100 : 150)) // Reduced food counts for performance
-  const MAX_FOOD = FOOD_COUNT * 3 // Cap maximum food to prevent lag
+  const FOOD_COUNT = isBot ? 400 : (isPaidLobby ? 200 : (isCasualLobby ? 150 : 200)) // Increased food counts
+  const MAX_FOOD = FOOD_COUNT * 2 // Cap maximum food to prevent lag
   const GAME_DURATION = 180 // 3 minutes
   const SNAKE_SPEED = 1.8 // Slightly reduced from 2
   const BASE_SNAKE_RADIUS = 8 // Slightly increased from 7
@@ -198,7 +198,7 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
 
   // Generate random position within world bounds
   const generateRandomPosition = useCallback((): Position => {
-    const margin = 50
+    const margin = 100 // Increased from 50
     return {
       x: margin + Math.random() * (WORLD_SIZE - 2 * margin),
       y: margin + Math.random() * (WORLD_SIZE - 2 * margin)
@@ -413,23 +413,23 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
           i-- // Adjust index after removal
           
           // Grow snake by adding segments
-          const growthSegments = 3
+          const growthSegments = 1 // Reduced from 3
           const lastSegment = snake.segments[snake.segments.length - 1]
           for (let j = 0; j < growthSegments; j++) {
             newSnake.segments.push({ ...lastSegment })
           }
           
           // Update snake properties
-          newSnake.score = (newSnake.score || 0) + 10
+          newSnake.score = (newSnake.score || 0) + 5 // Reduced from 10
           if (snake.isPlayer) {
-            scoreIncrease += 10
+            scoreIncrease += 5 // Reduced from 10
           }
           
           // Add new food to replace eaten one
           newFood.push(generateFood())
           
-          // Grow snake slightly
-          newSnake.radius = Math.min(25, snake.radius * 1.02)
+          // Grow snake slightly - much slower growth
+          newSnake.radius = Math.min(20, snake.radius * 1.005) // Reduced from 1.02 and max from 25
         }
       }
 
@@ -495,32 +495,45 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
     const currentDirection = bot.angle || 0
     
     // Wall avoidance - check if heading towards wall
-    const wallCheckDistance = 100 // Look ahead distance
+    const wallCheckDistance = 150 // Increased look ahead distance
     const futureX = head.x + Math.cos(currentDirection) * wallCheckDistance
     const futureY = head.y + Math.sin(currentDirection) * wallCheckDistance
     
-    const wallMargin = 50 // Safety margin from walls
+    const wallMargin = 80 // Increased safety margin from walls
     let wallAvoidanceAngle = null
+    
+    // Emergency wall check - if very close to wall
+    const emergencyMargin = 40
+    if (head.x < emergencyMargin || head.x > WORLD_SIZE - emergencyMargin ||
+        head.y < emergencyMargin || head.y > WORLD_SIZE - emergencyMargin) {
+      // Emergency turn - turn towards center immediately
+      const centerX = WORLD_SIZE / 2
+      const centerY = WORLD_SIZE / 2
+      const emergencyAngle = Math.atan2(centerY - head.y, centerX - head.x)
+      
+      const angleDiff = emergencyAngle - currentDirection
+      const normalizedDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff))
+      const maxTurn = 0.25 // Very sharp turn for emergency
+      const limitedTurn = Math.max(-maxTurn, Math.min(maxTurn, normalizedDiff))
+      return currentDirection + limitedTurn
+    }
     
     // Check if heading towards any wall
     if (futureX < wallMargin || futureX > WORLD_SIZE - wallMargin || 
         futureY < wallMargin || futureY > WORLD_SIZE - wallMargin) {
       
-      // Calculate angle to center to avoid wall
-      const centerX = WORLD_SIZE / 2
-      const centerY = WORLD_SIZE / 2
-      wallAvoidanceAngle = Math.atan2(centerY - head.y, centerX - head.x)
+      // Calculate better avoidance angle
+      let avoidX = head.x
+      let avoidY = head.y
       
-      // If very close to wall, prioritize wall avoidance
-      if (head.x < wallMargin * 0.5 || head.x > WORLD_SIZE - wallMargin * 0.5 ||
-          head.y < wallMargin * 0.5 || head.y > WORLD_SIZE - wallMargin * 0.5) {
-        // Emergency turn away from wall
-        const angleDiff = wallAvoidanceAngle - currentDirection
-        const normalizedDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff))
-        const maxTurn = 0.2 // Sharper turn for emergency
-        const limitedTurn = Math.max(-maxTurn, Math.min(maxTurn, normalizedDiff))
-        return currentDirection + limitedTurn
-      }
+      // Determine which wall we're approaching and turn away
+      if (futureX < wallMargin) avoidX = WORLD_SIZE * 0.75 // Turn right
+      else if (futureX > WORLD_SIZE - wallMargin) avoidX = WORLD_SIZE * 0.25 // Turn left
+      
+      if (futureY < wallMargin) avoidY = WORLD_SIZE * 0.75 // Turn down
+      else if (futureY > WORLD_SIZE - wallMargin) avoidY = WORLD_SIZE * 0.25 // Turn up
+      
+      wallAvoidanceAngle = Math.atan2(avoidY - head.y, avoidX - head.x)
     }
     
     // In preview mode, ensure snakes visit center area frequently
@@ -570,18 +583,18 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
     
     // If wall avoidance is needed, blend it with food seeking
     if (wallAvoidanceAngle !== null) {
-      // Blend wall avoidance with food seeking (prioritize wall avoidance)
-      targetAngle = wallAvoidanceAngle * 0.7 + targetAngle * 0.3
+      // Heavily prioritize wall avoidance over food seeking
+      targetAngle = wallAvoidanceAngle * 0.9 + targetAngle * 0.1
     }
 
     // CRITICAL: Limit turning radius to prevent impossible turns
     const angleDiff = targetAngle - currentDirection
     const normalizedDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff))
-    const maxTurn = 0.12 // Maximum turning radius per frame
+    const maxTurn = 0.15 // Slightly increased for better wall avoidance
     const limitedTurn = Math.max(-maxTurn, Math.min(maxTurn, normalizedDiff))
     
     // Add some randomness but keep it realistic
-    const randomOffset = (Math.random() - 0.5) * 0.05 // Reduced randomness
+    const randomOffset = (Math.random() - 0.5) * 0.03 // Further reduced randomness
     return currentDirection + limitedTurn + randomOffset
   }, [isPreview, WORLD_SIZE])
 
@@ -954,7 +967,7 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
         ctx.arc(
           head.x * scale,
           head.y * scale,
-          Math.max(2, snake.radius * scale * 0.8),
+          Math.max(3, snake.radius * scale * 1.5), // Increased from 2 and 0.8
           0,
           2 * Math.PI
         )
@@ -963,7 +976,7 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
         // Draw player snake with extra highlight
         if (snake.isPlayer) {
           ctx.strokeStyle = '#ffffff'
-          ctx.lineWidth = 1
+          ctx.lineWidth = 2 // Increased from 1
           ctx.stroke()
         }
       }
