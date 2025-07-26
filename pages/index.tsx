@@ -16,6 +16,13 @@ export default function Home() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
   const [players, setPlayers] = useState<string[]>([])
+  const [countdown, setCountdown] = useState<number | null>(null)
+  const [gameStarted, setGameStarted] = useState(false)
+  const [gameScore, setGameScore] = useState(0)
+  const [gameEnded, setGameEnded] = useState(false)
+  const [isPaidLobby, setIsPaidLobby] = useState(false)
+  const [isWinner, setIsWinner] = useState(false)
+  const [gameStartTime, setGameStartTime] = useState<number | null>(null)
 
   // Connect Farcaster wallet (only for paid lobby)
   const connectWallet = useCallback(async () => {
@@ -34,6 +41,7 @@ export default function Home() {
         // Fallback to Coinbase Smart Wallet
         const { createBaseAccountSDK } = await import('@base-org/account')
         const sdk = createBaseAccountSDK({
+          appName: 'SlitherMatch',
         })
         
         await sdk.getProvider().request({ method: 'wallet_connect' })
@@ -77,7 +85,15 @@ export default function Home() {
         setGameStarted(true)
       }, 9000)
     }
-  }
+  }, [connectWallet, walletAddress, currentView])
+
+  // Handle game end
+  const handleGameEnd = useCallback((score: number, winner: boolean = false) => {
+    setGameScore(score)
+    setIsWinner(winner)
+    setGameEnded(true)
+    setGameStarted(false)
+  }, [])
 
   // Share win to Farcaster
   const shareWin = useCallback(() => {
@@ -96,6 +112,12 @@ export default function Home() {
         navigator.clipboard.writeText(castText)
         alert('Win message copied to clipboard! Share it on Farcaster!')
       }
+    } catch (error) {
+      // Fallback to copy to clipboard
+      navigator.clipboard.writeText(castText)
+      alert('Win message copied to clipboard! Share it on Farcaster!')
+    }
+  }, [gameStartTime])
 
   // Reset to home
   const resetToHome = useCallback(() => {
@@ -104,6 +126,8 @@ export default function Home() {
     setGameEnded(false)
     setCountdown(null)
     setPlayers([])
+    setGameScore(0)
+    setIsWinner(false)
     setGameStartTime(null)
   }, [])
 
@@ -288,6 +312,9 @@ export default function Home() {
                  } else {
                    joinPaidLobby()
                  }
+               }}
+               className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg 
+                          transition-all duration-300 transform hover:scale-105"
              >
                🔄 Play Again
              </button>
