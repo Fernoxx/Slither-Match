@@ -10,7 +10,6 @@ module.exports = {
         mono: ['ui-monospace', 'SFMono-Regular', 'SF Mono', 'Consolas', 'Liberation Mono', 'Menlo', 'monospace'],
       },
       colors: {
-        // Custom neon colors for the game
         neon: {
           cyan: '#00ffff',
           green: '#00ff41',
