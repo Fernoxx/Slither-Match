@@ -152,7 +152,7 @@ export default function Home() {
     const shareUrl = `${window.location.origin}?lobby=${casualLobbyId}`
     const currentUser = casualPlayers[0] || { username: 'Player' }
     const previewUrl = `${window.location.origin}/api/preview?username=${encodeURIComponent(currentUser.username)}&mode=casual`
-    const castText = `Join me for a SlitherMatch!\n\n🐍 Free casual lobby - ${casualPlayers.length}/5 players\n\nPlay now: ${shareUrl}`
+    const castText = `Join me for a SlitherMatch!\n\nFree casual lobby - ${casualPlayers.length}/5 players\n\nPlay now: ${shareUrl}`
     
     // Create preview data for the share
     const previewData = {
@@ -218,7 +218,7 @@ export default function Home() {
   // Share win to Farcaster
   const shareWin = useCallback(() => {
     const gameTime = gameStartTime ? Math.floor((Date.now() - gameStartTime) / 1000) : 0
-    const castText = `🐍 I won the SlitherMatch bot lobby in ${gameTime} seconds! 🏆\n\nPlay now: ${window.location.origin}`
+    const castText = `I won the SlitherMatch bot lobby in ${gameTime} seconds!\n\nPlay now: ${window.location.origin}`
     
     // Try to post to Farcaster via parent frame
     try {
@@ -259,20 +259,35 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#06010a] text-white font-mono flex flex-col items-center justify-center p-5 relative">
+      {/* Background Game Animation - Only on Homepage */}
+      {currentView === 'home' && (
+        <div className="absolute inset-0 opacity-20 pointer-events-none">
+          <SnakeGame 
+            isPlaying={true}
+            isBot={true} 
+            isPreview={true}
+            isPaidLobby={false}
+            onScoreChange={() => {}}
+            onGameOver={() => {}}
+            onGameWin={() => {}}
+          />
+        </div>
+      )}
+      
       {/* Header - always visible */}
       <div className="text-center mb-8 z-10">
         <h1 className="text-5xl font-bold mb-4 text-transparent bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 bg-clip-text">
-          🐍 SlitherMatch
+          SlitherMatch
         </h1>
         <p className="text-xl text-gray-300">
-          Eat. Grow. Win. 🏆
+          Eat. Grow. Win.
         </p>
       </div>
 
       {currentView === 'home' && (
         <div className="flex flex-col items-center z-10">
-          {/* Main Buttons */}
-          <div className="flex gap-4 mb-8">
+          {/* Main Buttons - Vertical Layout */}
+          <div className="flex flex-col gap-4 mb-8 w-64">
             <button
               onClick={joinPaidLobby}
               disabled={isConnecting}
@@ -280,7 +295,7 @@ export default function Home() {
                          text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 
                          transform hover:scale-105 hover:shadow-xl disabled:opacity-50"
             >
-              {isConnecting ? '⏳ Connecting...' : '💰 Join Paid Lobby ($1 USDC)'}
+              {isConnecting ? 'Connecting...' : 'Paid Lobby ($1 USDC)'}
             </button>
             <button
               onClick={joinCasualLobby}
@@ -288,7 +303,7 @@ export default function Home() {
                          text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 
                          transform hover:scale-105 hover:shadow-xl"
             >
-              🎮 Casual Lobby
+              Casual Lobby
             </button>
             <button
               onClick={joinBotLobby}
@@ -296,42 +311,29 @@ export default function Home() {
                          text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 
                          transform hover:scale-105 hover:shadow-xl"
             >
-              🤖 Play with Bots
+              Bot Lobby
             </button>
           </div>
 
           {/* Game Rules */}
           <div className="bg-[#1a1a2e] border border-[#2d2d5e] rounded-lg p-6 mb-8 max-w-md">
             <h3 className="text-xl font-bold mb-4 text-purple-400 flex items-center">
-              🎮 Game Rules
+              Game Rules
             </h3>
             <div className="space-y-2 text-sm text-gray-300">
-              <div className="flex items-center">
-                <span className="text-yellow-400 mr-2">💰</span>
+              <div className="flex items-start">
+                <span className="text-yellow-400 mr-2">•</span>
                 Paid Lobby: $1 USDC entry fee
               </div>
-              <div className="flex items-center">
-                <span className="text-blue-400 mr-2">🎮</span>
+              <div className="flex items-start">
+                <span className="text-blue-400 mr-2">•</span>
                 Casual Lobby: Free (3-5 players)
               </div>
-              <div className="flex items-center">
-                <span className="text-green-400 mr-2">🏆</span>
+              <div className="flex items-start">
+                <span className="text-green-400 mr-2">•</span>
                 Winner takes all
               </div>
             </div>
-          </div>
-
-                     {/* Preview Game Box - 444x444px */}
-           <div className="bg-[#0a0c1a] rounded-lg overflow-hidden" style={{ width: '444px', height: '444px' }}>
-            <SnakeGame 
-              isPlaying={true}
-              isBot={true} 
-              isPreview={true}
-              isPaidLobby={false}
-              onScoreChange={() => {}}
-              onGameOver={() => {}}
-              onGameWin={() => {}}
-            />
           </div>
         </div>
       )}
@@ -340,7 +342,7 @@ export default function Home() {
          <div className="text-center z-10">
            <div className="bg-[#1a1a2e] border border-[#2d2d5e] rounded-lg p-8 mb-6 min-w-[400px]">
              <h2 className="text-2xl font-bold mb-6 text-cyan-400">
-               💰 Paid Lobby
+               Paid Lobby
              </h2>
             
             <div className="mb-6">
@@ -393,11 +395,11 @@ export default function Home() {
         <div className="text-center z-10">
           <div className="bg-[#1a1a2e] border border-[#2d2d5e] rounded-lg p-8 mb-6 min-w-[400px]">
             <h2 className="text-2xl font-bold mb-6 text-cyan-400">
-              🎮 Casual Match
+              Casual Match
             </h2>
             
             <div className="text-sm text-gray-400 mb-4">
-              ⏱️ 5 min
+              5 min
             </div>
 
             {/* Loading spinner */}
@@ -406,7 +408,7 @@ export default function Home() {
                 <div className="absolute inset-0 border-4 border-blue-500/20 rounded-full"></div>
                 <div className="absolute inset-0 border-4 border-transparent border-t-blue-500 rounded-full animate-spin"></div>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-2xl">👥</span>
+                  <span className="text-2xl">•</span>
                 </div>
               </div>
             </div>
@@ -463,7 +465,7 @@ export default function Home() {
                          text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 
                          transform hover:scale-105 hover:shadow-xl mb-4 flex items-center justify-center gap-2"
             >
-              <span>📤</span> Share
+              Share
             </button>
 
             {/* Cancel button */}
@@ -501,17 +503,17 @@ export default function Home() {
          <div className="text-center z-10">
            <div className="bg-[#1a1a2e] border border-[#2d2d5e] rounded-lg p-8 mb-6">
              <h2 className="text-3xl font-bold mb-4 text-green-400">
-               {isWinner ? "🎉 You Won!" : "🎮 Game Over!"}
+               {isWinner ? "You Won!" : "Game Over!"}
              </h2>
              <div className="text-2xl font-bold text-cyan-400 mb-4">
                Final Score: {gameScore}
              </div>
              <div className="text-lg text-gray-300 mb-6">
                {isPaidLobby 
-                 ? (isWinner ? "🏆 Congratulations! You won the prize pool!" : "Better luck next time!") 
+                 ? (isWinner ? "Congratulations! You won the prize pool!" : "Better luck next time!") 
                  : (isCasualLobby 
-                   ? (isWinner ? "🏆 You won the casual match!" : "Good game! Try again?")
-                   : (isWinner ? "🏆 You defeated all the bots!" : "Thanks for playing with the bots!")
+                   ? (isWinner ? "You won the casual match!" : "Good game! Try again?")
+                   : (isWinner ? "You defeated all the bots!" : "Thanks for playing with the bots!")
                  )
                }
              </div>
@@ -523,7 +525,7 @@ export default function Home() {
                  className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg 
                             transition-all duration-300 transform hover:scale-105 mb-4"
                >
-                 📤 Share Win
+                 Share Win
                </button>
              )}
            </div>
@@ -534,7 +536,7 @@ export default function Home() {
                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg 
                           transition-all duration-300 transform hover:scale-105"
              >
-               🏠 Back to Home
+               Back to Home
              </button>
              <button
                onClick={() => {
@@ -550,7 +552,7 @@ export default function Home() {
                className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg 
                           transition-all duration-300 transform hover:scale-105"
              >
-               🔄 Play Again
+               Play Again
              </button>
            </div>
          </div>

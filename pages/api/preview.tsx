@@ -29,7 +29,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
 
       {/* Logo/Title */}
       <text x="400" y="80" fontFamily="monospace" fontSize="48" fontWeight="bold" fill="url(#textGradient)" textAnchor="middle">
-        🐍 SlitherMatch
+        SlitherMatch
       </text>
 
       {/* Main message */}

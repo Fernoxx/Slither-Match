@@ -984,40 +984,62 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
   }, [snakes, camera, isPreview, WORLD_SIZE])
 
   return (
-    <div className={`${isPreview ? 'w-full h-full' : 'relative min-h-screen bg-[#06010a] text-white grid place-items-center font-mono'}`}>
-      {/* Top Panel */}
-      {!isPreview && (
-        <div className="absolute top-4 w-full flex justify-between px-8 items-center">
-          <div className="text-green-400 text-lg font-bold">
-            🎮 Game Live!
-          </div>
-          <button 
-            onClick={() => window.location.href = '/'}
-            className="text-gray-400 hover:text-red-400 transition"
-          >
-            ← Back to Home
-          </button>
-        </div>
-      )}
+    <div className={`relative ${isPreview ? 'w-full h-full' : 'min-h-screen bg-[#06010a] text-white grid place-items-center font-mono'}`}>
+      {/* For preview mode, render canvas directly */}
+      {isPreview ? (
+        <canvas 
+          ref={canvasRef} 
+          width={VIEWPORT_SIZE} 
+          height={VIEWPORT_SIZE} 
+          className="w-full h-full object-cover"
+          style={{ imageRendering: 'crisp-edges' }}
+        />
+      ) : (
+        <>
+          {/* Top Panel */}
+          <div className="absolute top-4 w-full flex justify-between px-8 items-center">
+            {/* Left Panel - Bot Scores */}
+            <div className="bg-[#1a1a2e] border border-[#2d2d5e] rounded-lg p-4 min-w-[200px]">
+              <h3 className="text-sm font-semibold text-purple-400 mb-2">Bot Scores</h3>
+              <div className="space-y-1 text-xs">
+                {snakes.filter(s => !s.isPlayer).slice(0, 5).map((bot, index) => (
+                  <div key={bot.id} className="flex justify-between">
+                    <span style={{ color: bot.color }}>Bot {index + 1}</span>
+                    <span>{bot.score || 0}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-      {/* Center Game Canvas */}
-      <div className="flex flex-col items-center">
-        {!isPreview && (
-          <>
+            {/* Right Panel - Leaderboard */}
+            <div className="bg-[#1a1a2e] border border-[#2d2d5e] rounded-lg p-4 min-w-[200px]">
+              <h3 className="text-sm font-semibold text-purple-400 mb-2">Top Players</h3>
+              <div className="space-y-1 text-xs">
+                {[...snakes].sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 5).map((snake, index) => (
+                  <div key={snake.id} className="flex justify-between">
+                    <span style={{ color: snake.color }}>{snake.isPlayer ? 'You' : `Bot ${snakes.filter(s => !s.isPlayer).indexOf(snake) + 1}`}</span>
+                    <span>{snake.score || 0}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Center Game Canvas */}
+          <div className="flex flex-col items-center">
             <div className="text-white text-xl font-semibold mb-1">Score: {playerScore}</div>
             <div className="text-purple-400 text-lg mb-3">
               Time: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
             </div>
-          </>
-        )}
 
-        <div className="relative w-[444px] h-[444px] bg-[#0a0c1a] border border-[#1c1f2e] rounded">
-          <canvas
-            ref={canvasRef}
-            width={VIEWPORT_SIZE}
-            height={VIEWPORT_SIZE}
-            className="w-full h-full"
-          />
+            <div className="relative w-[444px] h-[444px] bg-[#0a0c1a] border border-[#1c1f2e] rounded">
+              <canvas 
+                ref={canvasRef} 
+                width={VIEWPORT_SIZE} 
+                height={VIEWPORT_SIZE} 
+                className="w-full h-full"
+                style={{ imageRendering: 'crisp-edges' }}
+              />
           
           {/* Mini-map */}
           {!isPreview && (
@@ -1059,8 +1081,8 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
           </div>
         )}
       </div>
-
-
+      </>
+      )}
     </div>
   )
 }
