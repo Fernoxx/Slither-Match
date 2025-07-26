@@ -78,7 +78,7 @@ export default function Home() {
         setGameStarted(true)
       }, 9000)
     }
-  }, [connectWallet, walletAddress, currentView])
+  }
 
   // Share win to Farcaster
   const shareWin = useCallback(() => {
