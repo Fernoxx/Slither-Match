@@ -12,7 +12,6 @@ module.exports = {
       colors: {
         neon: {
           cyan: '#00ffff',
-          green: '#00ff41',
           pink: '#ff0080',
           purple: '#8000ff',
         },
