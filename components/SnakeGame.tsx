@@ -511,6 +511,35 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
     const head = bot.segments[0]
     const currentDirection = bot.angle || 0
     
+    // Wall avoidance - check if heading towards wall
+    const wallCheckDistance = 100 // Look ahead distance
+    const futureX = head.x + Math.cos(currentDirection) * wallCheckDistance
+    const futureY = head.y + Math.sin(currentDirection) * wallCheckDistance
+    
+    const wallMargin = 50 // Safety margin from walls
+    let wallAvoidanceAngle = null
+    
+    // Check if heading towards any wall
+    if (futureX < wallMargin || futureX > WORLD_SIZE - wallMargin || 
+        futureY < wallMargin || futureY > WORLD_SIZE - wallMargin) {
+      
+      // Calculate angle to center to avoid wall
+      const centerX = WORLD_SIZE / 2
+      const centerY = WORLD_SIZE / 2
+      wallAvoidanceAngle = Math.atan2(centerY - head.y, centerX - head.x)
+      
+      // If very close to wall, prioritize wall avoidance
+      if (head.x < wallMargin * 0.5 || head.x > WORLD_SIZE - wallMargin * 0.5 ||
+          head.y < wallMargin * 0.5 || head.y > WORLD_SIZE - wallMargin * 0.5) {
+        // Emergency turn away from wall
+        const angleDiff = wallAvoidanceAngle - currentDirection
+        const normalizedDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff))
+        const maxTurn = 0.2 // Sharper turn for emergency
+        const limitedTurn = Math.max(-maxTurn, Math.min(maxTurn, normalizedDiff))
+        return currentDirection + limitedTurn
+      }
+    }
+    
     // In preview mode, ensure snakes visit center area frequently
     if (isPreview) {
       const centerX = WORLD_SIZE / 2
@@ -551,10 +580,16 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
     }
 
     // Calculate angle to nearest food
-    const targetAngle = Math.atan2(
+    let targetAngle = Math.atan2(
       nearestFood.position.y - head.y,
       nearestFood.position.x - head.x
     )
+    
+    // If wall avoidance is needed, blend it with food seeking
+    if (wallAvoidanceAngle !== null) {
+      // Blend wall avoidance with food seeking (prioritize wall avoidance)
+      targetAngle = wallAvoidanceAngle * 0.7 + targetAngle * 0.3
+    }
 
     // CRITICAL: Limit turning radius to prevent impossible turns
     const angleDiff = targetAngle - currentDirection
@@ -694,16 +729,22 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
           }
         })
 
+        // Apply collision updates
         const [finalSnakes, newFood, scoreIncrease] = updateCollisions(updatedSnakes, food)
-        setFood(newFood)
         
+        // Add new food to existing food
+        setFood(prevFood => [...prevFood, ...newFood])
+        
+        // Update score
         if (scoreIncrease > 0) {
           setPlayerScore(prev => prev + scoreIncrease)
         }
 
+        // Filter out dead snakes (they already dropped their food)
+        const aliveSnakes = finalSnakes.filter(s => !s.isDead)
+
         // Check win conditions and game end
         const playerSnake = finalSnakes.find(s => s.isPlayer)
-        const aliveSnakes = finalSnakes.filter(s => !s.isDead)
         const aliveBots = aliveSnakes.filter(s => !s.isPlayer)
         
         if (!isPreview) {
@@ -719,7 +760,8 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
           }
         }
 
-        return finalSnakes
+        // Return only alive snakes
+        return aliveSnakes
       })
     }, 16) // ~60 FPS
 
@@ -846,8 +888,6 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
 
     // Draw snakes with proper visibility
     snakes.forEach(snake => {
-      if (snake.isDead && !isPreview) return
-
       snake.segments.forEach((segment, index) => {
         const screenX = segment.x - camera.x
         const screenY = segment.y - camera.y
@@ -924,7 +964,7 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
 
     // Draw snakes as dots
     snakes.forEach(snake => {
-      if (snake.segments.length > 0 && (!snake.isDead || isPreview)) {
+      if (snake.segments.length > 0) {
         const head = snake.segments[0]
         ctx.fillStyle = snake.color
         ctx.beginPath()
