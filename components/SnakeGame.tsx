@@ -8,6 +8,7 @@ interface SnakeGameProps {
   isBot?: boolean
   isPreview?: boolean
   isPaidLobby?: boolean
+  isCasualLobby?: boolean
 }
 
 // Game constants
@@ -49,12 +50,14 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
   onGameWin,
   isBot = false, 
   isPreview = false,
-  isPaidLobby = false 
+  isPaidLobby = false,
+  isCasualLobby = false 
 }) => {
   // Dynamic constants based on game mode
   const WORLD_SIZE = isPaidLobby ? 1332 : 2500 // Increased for bot lobby
-  const BOT_COUNT = isPaidLobby ? 4 : 10
-  const FOOD_COUNT = isPaidLobby ? 80 : 200 // More food for bot lobby
+  const BOT_COUNT = isPaidLobby ? 4 : (isCasualLobby ? 0 : 10) // No bots in casual lobby
+  const FOOD_COUNT = isBot ? 400 : (isPaidLobby ? 200 : (isCasualLobby ? 150 : 200)) // Increased food counts
+  const MAX_FOOD = FOOD_COUNT * 2 // Cap maximum food to prevent lag
   const GAME_DURATION = 180 // 3 minutes
   const SNAKE_SPEED = 1.8 // Slightly reduced from 2
   const BASE_SNAKE_RADIUS = 8 // Slightly increased from 7
@@ -195,7 +198,7 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
 
   // Generate random position within world bounds
   const generateRandomPosition = useCallback((): Position => {
-    const margin = 50
+    const margin = 100 // Increased from 50
     return {
       x: margin + Math.random() * (WORLD_SIZE - 2 * margin),
       y: margin + Math.random() * (WORLD_SIZE - 2 * margin)
@@ -297,15 +300,13 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
       })
     }
 
-    console.log(`Initialized ${initialSnakes.length} snakes (${initialSnakes.filter(s => s.isPlayer).length} player, ${initialSnakes.filter(s => !s.isPlayer).length} bots)`)
-
-    setSnakes(initialSnakes)
-
     // Generate initial food
     const initialFood: Food[] = []
     for (let i = 0; i < FOOD_COUNT; i++) {
       initialFood.push(generateFood())
     }
+
+    setSnakes(initialSnakes)
     setFood(initialFood)
     setPlayerScore(0)
     setGameStarted(true)
@@ -348,7 +349,6 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
       // Mark snake as dead if it hits a wall (unless in preview mode)
       if (!isPreview) {
         newSnake.isDead = true
-        console.log(`Snake ${snake.id} hit wall at position:`, newHead.x, newHead.y, 'radius:', snake.radius)
       } else {
         // In preview mode, wrap around or bounce
         if (newHead.x < snake.radius) newHead.x = WORLD_SIZE - snake.radius
@@ -393,9 +393,9 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
     return distance < (radius1 + radius2) * 0.9 // Slightly more forgiving collision
   }, [])
 
-  // Update snake collisions
+  // Check collisions for all snakes and update accordingly
   const updateCollisions = useCallback((currentSnakes: Snake[], currentFood: Food[]): [Snake[], Food[], number] => {
-    let newFood = [...currentFood]
+    let newFood: Food[] = [...currentFood] // Start with current food
     let scoreIncrease = 0
 
     const updatedSnakes = currentSnakes.map(snake => {
@@ -405,48 +405,31 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
       const newSnake = { ...snake }
 
       // Check food collision
-      for (let i = newFood.length - 1; i >= 0; i--) {
-        if (checkCollision(head, snake.radius * 0.9, newFood[i].position, newFood[i].radius)) {
-          // Eat food
+      for (let i = 0; i < newFood.length; i++) {
+        const food = newFood[i]
+        if (checkCollision(head, snake.radius, food.position, food.radius)) {
+          // Remove eaten food
           newFood.splice(i, 1)
-          newSnake.score += 1
-          newSnake.radius = Math.min(snake.radius + 0.2, 15) // Grow but cap size
+          i-- // Adjust index after removal
           
-          // Add new segment properly at tail
-          const tail = snake.segments[snake.segments.length - 1]
-          const secondToTail = snake.segments.length > 1 ? snake.segments[snake.segments.length - 2] : tail
-          
-          // Calculate direction from second-to-tail to tail
-          const dx = tail.x - secondToTail.x
-          const dy = tail.y - secondToTail.y
-          const distance = Math.sqrt(dx * dx + dy * dy)
-          
-          let newSegmentX, newSegmentY
-          if (distance > 0) {
-            // Place new segment behind the tail
-            const unitX = dx / distance
-            const unitY = dy / distance
-            newSegmentX = tail.x + unitX * snake.radius * 1.5
-            newSegmentY = tail.y + unitY * snake.radius * 1.5
-          } else {
-            // Fallback if segments are too close
-            newSegmentX = tail.x + snake.radius * 1.5
-            newSegmentY = tail.y
+          // Grow snake by adding segments
+          const growthSegments = 1 // Reduced from 3
+          const lastSegment = snake.segments[snake.segments.length - 1]
+          for (let j = 0; j < growthSegments; j++) {
+            newSnake.segments.push({ ...lastSegment })
           }
           
-          // Add new segment
-          newSnake.segments = [...snake.segments, {
-            x: newSegmentX,
-            y: newSegmentY
-          }]
-
+          // Update snake properties
+          newSnake.score = (newSnake.score || 0) + 5 // Reduced from 10
           if (snake.isPlayer) {
-            scoreIncrease += 1
+            scoreIncrease += 5 // Reduced from 10
           }
           
-          // Spawn new food
+          // Add new food to replace eaten one
           newFood.push(generateFood())
-          break
+          
+          // Grow snake slightly - much slower growth
+          newSnake.radius = Math.min(20, snake.radius * 1.005) // Reduced from 1.02 and max from 25
         }
       }
 
@@ -454,7 +437,6 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
       if (head.x <= snake.radius || head.x >= WORLD_SIZE - snake.radius ||
           head.y <= snake.radius || head.y >= WORLD_SIZE - snake.radius) {
         newSnake.isDead = true
-        console.log(`Snake ${snake.id} hit wall at (${head.x}, ${head.y})`)
       }
 
       // Check self-collision (DISABLED FOR ALL SNAKES - no snake can hit itself)
@@ -469,7 +451,6 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
           for (let i = 0; i < otherSnake.segments.length; i++) {
             if (checkCollision(head, snake.radius * 0.7, otherSnake.segments[i], otherSnake.radius * 0.7)) {
               newSnake.isDead = true
-              console.log(`Snake ${snake.id} collided with snake ${otherSnake.id} at segment ${i}`)
               break
             }
           }
@@ -479,8 +460,12 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
 
       // If snake died, drop food for each segment
       if (newSnake.isDead && !snake.isDead) {
-        console.log(`Snake ${snake.id} died, dropping ${snake.segments.length} food pieces`)
-        snake.segments.forEach((segment, index) => {
+        
+        // Only drop food if we haven't exceeded the max food limit
+        const foodToDrop = Math.min(snake.segments.length, MAX_FOOD - newFood.length)
+        
+        for (let i = 0; i < foodToDrop; i++) {
+          const segment = snake.segments[i]
           // Add some randomness to food placement
           const offsetX = (Math.random() - 0.5) * snake.radius * 2
           const offsetY = (Math.random() - 0.5) * snake.radius * 2
@@ -493,14 +478,14 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
             color: COLORS.FOOD[Math.floor(Math.random() * COLORS.FOOD.length)],
             radius: 4 + Math.random() * 2 // Vary food size
           })
-        })
+        }
       }
 
       return newSnake
     })
 
     return [updatedSnakes, newFood, scoreIncrease]
-  }, [checkCollision, generateFood])
+  }, [checkCollision, generateFood, MAX_FOOD])
 
   // Update bot AI with limited turning radius
   const updateBotAI = useCallback((bot: Snake, allSnakes: Snake[], allFood: Food[]): number | null => {
@@ -508,6 +493,48 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
 
     const head = bot.segments[0]
     const currentDirection = bot.angle || 0
+    
+    // Wall avoidance - check if heading towards wall
+    const wallCheckDistance = 150 // Increased look ahead distance
+    const futureX = head.x + Math.cos(currentDirection) * wallCheckDistance
+    const futureY = head.y + Math.sin(currentDirection) * wallCheckDistance
+    
+    const wallMargin = 80 // Increased safety margin from walls
+    let wallAvoidanceAngle = null
+    
+    // Emergency wall check - if very close to wall
+    const emergencyMargin = 40
+    if (head.x < emergencyMargin || head.x > WORLD_SIZE - emergencyMargin ||
+        head.y < emergencyMargin || head.y > WORLD_SIZE - emergencyMargin) {
+      // Emergency turn - turn towards center immediately
+      const centerX = WORLD_SIZE / 2
+      const centerY = WORLD_SIZE / 2
+      const emergencyAngle = Math.atan2(centerY - head.y, centerX - head.x)
+      
+      const angleDiff = emergencyAngle - currentDirection
+      const normalizedDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff))
+      const maxTurn = 0.25 // Very sharp turn for emergency
+      const limitedTurn = Math.max(-maxTurn, Math.min(maxTurn, normalizedDiff))
+      return currentDirection + limitedTurn
+    }
+    
+    // Check if heading towards any wall
+    if (futureX < wallMargin || futureX > WORLD_SIZE - wallMargin || 
+        futureY < wallMargin || futureY > WORLD_SIZE - wallMargin) {
+      
+      // Calculate better avoidance angle
+      let avoidX = head.x
+      let avoidY = head.y
+      
+      // Determine which wall we're approaching and turn away
+      if (futureX < wallMargin) avoidX = WORLD_SIZE * 0.75 // Turn right
+      else if (futureX > WORLD_SIZE - wallMargin) avoidX = WORLD_SIZE * 0.25 // Turn left
+      
+      if (futureY < wallMargin) avoidY = WORLD_SIZE * 0.75 // Turn down
+      else if (futureY > WORLD_SIZE - wallMargin) avoidY = WORLD_SIZE * 0.25 // Turn up
+      
+      wallAvoidanceAngle = Math.atan2(avoidY - head.y, avoidX - head.x)
+    }
     
     // In preview mode, ensure snakes visit center area frequently
     if (isPreview) {
@@ -549,19 +576,25 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
     }
 
     // Calculate angle to nearest food
-    const targetAngle = Math.atan2(
+    let targetAngle = Math.atan2(
       nearestFood.position.y - head.y,
       nearestFood.position.x - head.x
     )
+    
+    // If wall avoidance is needed, blend it with food seeking
+    if (wallAvoidanceAngle !== null) {
+      // Heavily prioritize wall avoidance over food seeking
+      targetAngle = wallAvoidanceAngle * 0.9 + targetAngle * 0.1
+    }
 
     // CRITICAL: Limit turning radius to prevent impossible turns
     const angleDiff = targetAngle - currentDirection
     const normalizedDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff))
-    const maxTurn = 0.12 // Maximum turning radius per frame
+    const maxTurn = 0.15 // Slightly increased for better wall avoidance
     const limitedTurn = Math.max(-maxTurn, Math.min(maxTurn, normalizedDiff))
     
     // Add some randomness but keep it realistic
-    const randomOffset = (Math.random() - 0.5) * 0.05 // Reduced randomness
+    const randomOffset = (Math.random() - 0.5) * 0.03 // Further reduced randomness
     return currentDirection + limitedTurn + randomOffset
   }, [isPreview, WORLD_SIZE])
 
@@ -692,16 +725,22 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
           }
         })
 
-        const [finalSnakes, newFood, scoreIncrease] = updateCollisions(updatedSnakes, food)
-        setFood(newFood)
+        // Apply collision updates
+        const [finalSnakes, updatedFood, scoreIncrease] = updateCollisions(updatedSnakes, food)
         
+        // Update food state with the new food array
+        setFood(updatedFood)
+        
+        // Update score
         if (scoreIncrease > 0) {
           setPlayerScore(prev => prev + scoreIncrease)
         }
 
+        // Filter out dead snakes (they already dropped their food)
+        const aliveSnakes = finalSnakes.filter(s => !s.isDead)
+
         // Check win conditions and game end
         const playerSnake = finalSnakes.find(s => s.isPlayer)
-        const aliveSnakes = finalSnakes.filter(s => !s.isDead)
         const aliveBots = aliveSnakes.filter(s => !s.isPlayer)
         
         if (!isPreview) {
@@ -717,7 +756,8 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
           }
         }
 
-        return finalSnakes
+        // Return only alive snakes
+        return aliveSnakes
       })
     }, 16) // ~60 FPS
 
@@ -844,8 +884,6 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
 
     // Draw snakes with proper visibility
     snakes.forEach(snake => {
-      if (snake.isDead && !isPreview) return
-
       snake.segments.forEach((segment, index) => {
         const screenX = segment.x - camera.x
         const screenY = segment.y - camera.y
@@ -922,14 +960,14 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
 
     // Draw snakes as dots
     snakes.forEach(snake => {
-      if (snake.segments.length > 0 && (!snake.isDead || isPreview)) {
+      if (snake.segments.length > 0) {
         const head = snake.segments[0]
         ctx.fillStyle = snake.color
         ctx.beginPath()
         ctx.arc(
           head.x * scale,
           head.y * scale,
-          Math.max(2, snake.radius * scale * 0.8),
+          Math.max(3, snake.radius * scale * 1.5), // Increased from 2 and 0.8
           0,
           2 * Math.PI
         )
@@ -938,7 +976,7 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
         // Draw player snake with extra highlight
         if (snake.isPlayer) {
           ctx.strokeStyle = '#ffffff'
-          ctx.lineWidth = 1
+          ctx.lineWidth = 2 // Increased from 1
           ctx.stroke()
         }
       }
@@ -946,40 +984,62 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
   }, [snakes, camera, isPreview, WORLD_SIZE])
 
   return (
-    <div className={`${isPreview ? 'w-full h-full' : 'relative min-h-screen bg-[#06010a] text-white grid place-items-center font-mono'}`}>
-      {/* Top Panel */}
-      {!isPreview && (
-        <div className="absolute top-4 w-full flex justify-between px-8 items-center">
-          <div className="text-green-400 text-lg font-bold">
-            🎮 Game Live!
-          </div>
-          <button 
-            onClick={() => window.location.href = '/'}
-            className="text-gray-400 hover:text-red-400 transition"
-          >
-            ← Back to Home
-          </button>
-        </div>
-      )}
+    <div className={`relative ${isPreview ? 'w-full h-full' : 'min-h-screen bg-[#06010a] text-white grid place-items-center font-mono'}`}>
+      {/* For preview mode, render canvas directly */}
+      {isPreview ? (
+        <canvas 
+          ref={canvasRef} 
+          width={VIEWPORT_SIZE} 
+          height={VIEWPORT_SIZE} 
+          className="w-full h-full object-cover"
+          style={{ imageRendering: 'crisp-edges' }}
+        />
+      ) : (
+        <>
+          {/* Top Panel */}
+          <div className="absolute top-4 w-full flex justify-between px-8 items-center">
+            {/* Left Panel - Bot Scores */}
+            <div className="bg-[#1a1a2e] border border-[#2d2d5e] rounded-lg p-4 min-w-[200px]">
+              <h3 className="text-sm font-semibold text-purple-400 mb-2">Bot Scores</h3>
+              <div className="space-y-1 text-xs">
+                {snakes.filter(s => !s.isPlayer).slice(0, 5).map((bot, index) => (
+                  <div key={bot.id} className="flex justify-between">
+                    <span style={{ color: bot.color }}>Bot {index + 1}</span>
+                    <span>{bot.score || 0}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-      {/* Center Game Canvas */}
-      <div className="flex flex-col items-center">
-        {!isPreview && (
-          <>
+            {/* Right Panel - Leaderboard */}
+            <div className="bg-[#1a1a2e] border border-[#2d2d5e] rounded-lg p-4 min-w-[200px]">
+              <h3 className="text-sm font-semibold text-purple-400 mb-2">Top Players</h3>
+              <div className="space-y-1 text-xs">
+                {[...snakes].sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 5).map((snake, index) => (
+                  <div key={snake.id} className="flex justify-between">
+                    <span style={{ color: snake.color }}>{snake.isPlayer ? 'You' : `Bot ${snakes.filter(s => !s.isPlayer).indexOf(snake) + 1}`}</span>
+                    <span>{snake.score || 0}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Center Game Canvas */}
+          <div className="flex flex-col items-center">
             <div className="text-white text-xl font-semibold mb-1">Score: {playerScore}</div>
             <div className="text-purple-400 text-lg mb-3">
               Time: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
             </div>
-          </>
-        )}
 
-        <div className="relative w-[444px] h-[444px] bg-[#0a0c1a] border border-[#1c1f2e] rounded">
-          <canvas
-            ref={canvasRef}
-            width={VIEWPORT_SIZE}
-            height={VIEWPORT_SIZE}
-            className="w-full h-full"
-          />
+            <div className="relative w-[444px] h-[444px] bg-[#0a0c1a] border border-[#1c1f2e] rounded">
+              <canvas 
+                ref={canvasRef} 
+                width={VIEWPORT_SIZE} 
+                height={VIEWPORT_SIZE} 
+                className="w-full h-full"
+                style={{ imageRendering: 'crisp-edges' }}
+              />
           
           {/* Mini-map */}
           {!isPreview && (
@@ -1021,8 +1081,8 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
           </div>
         )}
       </div>
-
-
+      </>
+      )}
     </div>
   )
 }
