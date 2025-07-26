@@ -8,6 +8,7 @@ interface SnakeGameProps {
   isBot?: boolean
   isPreview?: boolean
   isPaidLobby?: boolean
+  isCasualLobby?: boolean
 }
 
 // Game constants
@@ -49,12 +50,13 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
   onGameWin,
   isBot = false, 
   isPreview = false,
-  isPaidLobby = false 
+  isPaidLobby = false,
+  isCasualLobby = false 
 }) => {
   // Dynamic constants based on game mode
   const WORLD_SIZE = isPaidLobby ? 1332 : 2500 // Increased for bot lobby
-  const BOT_COUNT = isPaidLobby ? 4 : 10
-  const FOOD_COUNT = isPaidLobby ? 80 : 200 // More food for bot lobby
+  const BOT_COUNT = isPaidLobby ? 4 : (isCasualLobby ? 0 : 10) // No bots in casual lobby
+  const FOOD_COUNT = isBot ? 600 : (isPaidLobby ? 250 : (isCasualLobby ? 150 : 200)) // Updated food counts
   const GAME_DURATION = 180 // 3 minutes
   const SNAKE_SPEED = 1.8 // Slightly reduced from 2
   const BASE_SNAKE_RADIUS = 8 // Slightly increased from 7

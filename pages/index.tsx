@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import SnakeGame from '../components/SnakeGame'
 
 // Wallet integration for Farcaster miniapps
@@ -12,7 +12,7 @@ declare global {
 }
 
 export default function Home() {
-  const [currentView, setCurrentView] = useState<'home' | 'bot-lobby' | 'paid-lobby'>('home')
+  const [currentView, setCurrentView] = useState<'home' | 'bot-lobby' | 'paid-lobby' | 'casual-lobby' | 'casual-waiting'>('home')
   const [walletAddress, setWalletAddress] = useState<string | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
   const [players, setPlayers] = useState<string[]>([])
@@ -23,6 +23,13 @@ export default function Home() {
   const [isPaidLobby, setIsPaidLobby] = useState(false)
   const [isWinner, setIsWinner] = useState(false)
   const [gameStartTime, setGameStartTime] = useState<number | null>(null)
+  
+  // Casual lobby specific states
+  const [casualLobbyId, setCasualLobbyId] = useState<string | null>(null)
+  const [isSearchingPlayers, setIsSearchingPlayers] = useState(false)
+  const [casualPlayers, setCasualPlayers] = useState<Array<{id: string, username: string, pfp?: string}>>([])
+  const [casualCountdown, setCasualCountdown] = useState<number | null>(null)
+  const [isCasualLobby, setIsCasualLobby] = useState(false)
 
   // Connect Farcaster wallet (only for paid lobby)
   const connectWallet = useCallback(async () => {
@@ -87,6 +94,119 @@ export default function Home() {
     }
   }, [connectWallet, walletAddress, currentView])
 
+  // Join casual lobby
+  const joinCasualLobby = useCallback(() => {
+    setCurrentView('casual-waiting')
+    setIsCasualLobby(true)
+    setIsSearchingPlayers(true)
+    
+    // Generate a unique lobby ID
+    const lobbyId = Math.random().toString(36).substring(2, 15)
+    setCasualLobbyId(lobbyId)
+    
+    // Get user info from Farcaster if available
+    const currentUser = {
+      id: 'user-' + Math.random().toString(36).substring(2, 9),
+      username: 'You',
+      pfp: undefined
+    }
+    setCasualPlayers([currentUser])
+    
+    // Check URL params to see if joining existing lobby
+    const urlParams = new URLSearchParams(window.location.search)
+    const joinLobbyId = urlParams.get('lobby')
+    
+    if (joinLobbyId) {
+      // Joining existing lobby
+      setCasualLobbyId(joinLobbyId)
+      // Simulate joining existing lobby
+      setTimeout(() => {
+        setCasualPlayers(prev => [...prev, 
+          { id: 'player-2', username: 'Player Alpha', pfp: undefined }
+        ])
+      }, 1000)
+    }
+    
+    // Simulate players joining
+    if (!joinLobbyId) {
+      setTimeout(() => {
+        setCasualPlayers(prev => [...prev, 
+          { id: 'player-2', username: 'Player Beta', pfp: undefined }
+        ])
+      }, 3000)
+      
+      setTimeout(() => {
+        setCasualPlayers(prev => [...prev, 
+          { id: 'player-3', username: 'Player Gamma', pfp: undefined }
+        ])
+        // Start countdown when 3 players
+        setCasualCountdown(30)
+      }, 6000)
+    }
+  }, [])
+
+  // Share casual lobby link
+  const shareCasualLobby = useCallback(() => {
+    if (!casualLobbyId) return
+    
+    const shareUrl = `${window.location.origin}?lobby=${casualLobbyId}`
+    const currentUser = casualPlayers[0] || { username: 'Player' }
+    const previewUrl = `${window.location.origin}/api/preview?username=${encodeURIComponent(currentUser.username)}&mode=casual`
+    const castText = `Join me for a SlitherMatch!\n\n🐍 Free casual lobby - ${casualPlayers.length}/5 players\n\nPlay now: ${shareUrl}`
+    
+    // Create preview data for the share
+    const previewData = {
+      type: 'share_cast',
+      text: castText,
+      preview: {
+        title: 'SlitherMatch',
+        description: 'Join me for a slither match',
+        image: previewUrl,
+        players: casualPlayers,
+        mode: 'casual'
+      }
+    }
+    
+    try {
+      if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+        window.parent.postMessage(previewData, '*')
+      } else {
+        // Fallback to copy to clipboard
+        navigator.clipboard.writeText(castText)
+        alert('Lobby link copied to clipboard! Share it to invite players!')
+      }
+    } catch (error) {
+      navigator.clipboard.writeText(castText)
+      alert('Lobby link copied to clipboard! Share it to invite players!')
+    }
+  }, [casualLobbyId, casualPlayers])
+
+  // Handle casual countdown
+  useEffect(() => {
+    if (casualCountdown !== null && casualCountdown > 0) {
+      const timer = setTimeout(() => {
+        setCasualCountdown(casualCountdown - 1)
+      }, 1000)
+      return () => clearTimeout(timer)
+    } else if (casualCountdown === 0) {
+      setCurrentView('casual-lobby')
+      setGameStarted(true)
+      setIsSearchingPlayers(false)
+      setGameStartTime(Date.now())
+    }
+  }, [casualCountdown])
+
+  // Check URL params on load
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const lobbyId = urlParams.get('lobby')
+    
+    if (lobbyId) {
+      // Auto-join casual lobby if URL has lobby parameter
+      joinCasualLobby()
+    }
+  }, [joinCasualLobby])
+
   // Handle game end
   const handleGameEnd = useCallback((score: number, winner: boolean = false) => {
     setGameScore(score)
@@ -129,6 +249,12 @@ export default function Home() {
     setGameScore(0)
     setIsWinner(false)
     setGameStartTime(null)
+    // Reset casual lobby states
+    setCasualLobbyId(null)
+    setIsSearchingPlayers(false)
+    setCasualPlayers([])
+    setCasualCountdown(null)
+    setIsCasualLobby(false)
   }, [])
 
   return (
@@ -157,6 +283,14 @@ export default function Home() {
               {isConnecting ? '⏳ Connecting...' : '💰 Join Paid Lobby ($1 USDC)'}
             </button>
             <button
+              onClick={joinCasualLobby}
+              className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 
+                         text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 
+                         transform hover:scale-105 hover:shadow-xl"
+            >
+              🎮 Casual Lobby
+            </button>
+            <button
               onClick={joinBotLobby}
               className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 
                          text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 
@@ -174,7 +308,11 @@ export default function Home() {
             <div className="space-y-2 text-sm text-gray-300">
               <div className="flex items-center">
                 <span className="text-yellow-400 mr-2">💰</span>
-                $1 USDC entry fee
+                Paid Lobby: $1 USDC entry fee
+              </div>
+              <div className="flex items-center">
+                <span className="text-blue-400 mr-2">🎮</span>
+                Casual Lobby: Free (3-5 players)
               </div>
               <div className="flex items-center">
                 <span className="text-green-400 mr-2">🏆</span>
@@ -250,6 +388,96 @@ export default function Home() {
         </div>
       )}
 
+      {/* Casual Waiting Room */}
+      {currentView === 'casual-waiting' && !gameStarted && !gameEnded && (
+        <div className="text-center z-10">
+          <div className="bg-[#1a1a2e] border border-[#2d2d5e] rounded-lg p-8 mb-6 min-w-[400px]">
+            <h2 className="text-2xl font-bold mb-6 text-cyan-400">
+              🎮 Casual Match
+            </h2>
+            
+            <div className="text-sm text-gray-400 mb-4">
+              ⏱️ 5 min
+            </div>
+
+            {/* Loading spinner */}
+            <div className="mb-6">
+              <div className="relative w-24 h-24 mx-auto">
+                <div className="absolute inset-0 border-4 border-blue-500/20 rounded-full"></div>
+                <div className="absolute inset-0 border-4 border-transparent border-t-blue-500 rounded-full animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-2xl">👥</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <h3 className="text-lg font-bold mb-2">Finding opponent...</h3>
+              <p className="text-gray-400">Searching for players...</p>
+            </div>
+
+            {/* Player count and stats */}
+            <div className="flex justify-around mb-6 text-sm">
+              <div>
+                <div className="text-blue-500 text-2xl font-bold">{casualPlayers.length}</div>
+                <div className="text-gray-400">Players in queue</div>
+              </div>
+              <div>
+                <div className="text-blue-500 text-2xl font-bold">
+                  {casualCountdown !== null ? `0:${casualCountdown.toString().padStart(2, '0')}` : '1:01'}
+                </div>
+                <div className="text-gray-400">Time in queue</div>
+              </div>
+              <div>
+                <div className="text-blue-500 text-2xl font-bold">FREE</div>
+                <div className="text-gray-400">Entry fee</div>
+              </div>
+            </div>
+
+            {/* Players list */}
+            {casualPlayers.length > 1 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold mb-2 text-purple-400">Players joined:</h3>
+                <div className="space-y-1">
+                  {casualPlayers.map((player, index) => (
+                    <div key={player.id} className="text-sm text-gray-300">
+                      {player.username}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Countdown message */}
+            {casualCountdown !== null && casualCountdown <= 30 && (
+              <div className="mb-4 text-yellow-400">
+                Game starting in {casualCountdown} seconds...
+                {casualCountdown > 10 && <div className="text-sm text-gray-400 mt-1">More players can still join!</div>}
+              </div>
+            )}
+
+            {/* Share button */}
+            <button
+              onClick={shareCasualLobby}
+              className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 
+                         text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 
+                         transform hover:scale-105 hover:shadow-xl mb-4 flex items-center justify-center gap-2"
+            >
+              <span>📤</span> Share
+            </button>
+
+            {/* Cancel button */}
+            <button
+              onClick={resetToHome}
+              className="w-full bg-transparent border border-red-500 text-red-500 hover:bg-red-500/10
+                         font-bold py-3 px-6 rounded-lg transition-all duration-300"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {gameStarted && !gameEnded && (
         <div className="z-10">
           <SnakeGame 
@@ -257,6 +485,7 @@ export default function Home() {
             isBot={false}
             isPreview={false}
             isPaidLobby={isPaidLobby}
+            isCasualLobby={isCasualLobby}
             onScoreChange={(score) => setGameScore(score)}
             onGameOver={(score) => {
               handleGameEnd(score, false)
@@ -280,7 +509,10 @@ export default function Home() {
              <div className="text-lg text-gray-300 mb-6">
                {isPaidLobby 
                  ? (isWinner ? "🏆 Congratulations! You won the prize pool!" : "Better luck next time!") 
-                 : (isWinner ? "🏆 You defeated all the bots!" : "Thanks for playing with the bots!")
+                 : (isCasualLobby 
+                   ? (isWinner ? "🏆 You won the casual match!" : "Good game! Try again?")
+                   : (isWinner ? "🏆 You defeated all the bots!" : "Thanks for playing with the bots!")
+                 )
                }
              </div>
              
@@ -309,6 +541,8 @@ export default function Home() {
                  setGameEnded(false)
                  if (currentView === 'bot-lobby') {
                    joinBotLobby()
+                 } else if (currentView === 'casual-lobby') {
+                   joinCasualLobby()
                  } else {
                    joinPaidLobby()
                  }
