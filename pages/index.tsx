@@ -34,7 +34,6 @@ export default function Home() {
         // Fallback to Coinbase Smart Wallet
         const { createBaseAccountSDK } = await import('@base-org/account')
         const sdk = createBaseAccountSDK({
-          appName: 'SlitherMatch',
         })
         
         await sdk.getProvider().request({ method: 'wallet_connect' })
