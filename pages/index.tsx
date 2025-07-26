@@ -105,8 +105,6 @@ export default function Home() {
     setGameEnded(false)
     setCountdown(null)
     setPlayers([])
-    setGameScore(0)
-    setIsWinner(false)
     setGameStartTime(null)
   }, [])
 
