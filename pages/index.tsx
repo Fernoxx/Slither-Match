@@ -87,7 +87,6 @@ export default function Home() {
     setGameScore(score)
     setIsWinner(winner)
     setGameEnded(true)
-    setGameStarted(false)
   }, [])
 
   // Share win to Farcaster
