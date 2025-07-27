@@ -65,7 +65,6 @@ export default function Home() {
 
       {currentView === 'home' && (
         <div className="flex flex-col items-center z-10">
-          {/* Main Buttons */}
           <div className="flex gap-4 mb-8">
             <button
               onClick={joinPaidLobby}
