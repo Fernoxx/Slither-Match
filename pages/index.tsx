@@ -15,7 +15,6 @@ export default function Home() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
   const [players, setPlayers] = useState<string[]>([])
-  const [countdown, setCountdown] = useState<number | null>(null)
   const [gameStarted, setGameStarted] = useState(false)
   const [gameScore, setGameScore] = useState(0)
   const [gameEnded, setGameEnded] = useState(false)
