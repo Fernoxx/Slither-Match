@@ -25,7 +25,7 @@ export default function Home() {
   // Connect Farcaster wallet (only for paid lobby)
   const connectWallet = useCallback(async () => {
     if (currentView === 'bot-lobby') {
-      // No wallet needed for bot lobby
+      // No wallet needed
       return
     }
 
