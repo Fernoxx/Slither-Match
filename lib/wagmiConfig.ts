@@ -11,6 +11,5 @@ export const config = createConfig({
   connectors: [farcasterMiniApp()],
   ssr: true,
   transports: {
-    [baseSepolia.id]: http(BASE_SEPOLIA_RPC_URL)
   }
 })
