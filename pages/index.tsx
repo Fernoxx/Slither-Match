@@ -75,9 +75,6 @@ export default function Home() {
       }, 9000)
     }
   }, [connectWallet, walletAddress, currentView])
-
-  // Handle game end
-  const handleGameEnd = useCallback((score: number, winner: boolean = false) => {
     setGameScore(score)
     setIsWinner(winner)
     setGameEnded(true)
