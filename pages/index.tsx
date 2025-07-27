@@ -153,19 +153,6 @@ export default function Home() {
                 $1 USDC entry fee
 
                      {/* Preview Game Box - 444x444px */}
-           <div className="bg-[#0a0c1a] rounded-lg overflow-hidden" style={{ width: '444px', height: '444px' }}>
-            <SnakeGame 
-              isPlaying={true}
-              isBot={true} 
-              isPreview={true}
-              isPaidLobby={false}
-              onScoreChange={() => {}}
-              onGameOver={() => {}}
-              onGameWin={() => {}}
-            />
-          </div>
-        </div>
-      )}
 
                            {currentView === 'paid-lobby' && !gameStarted && !gameEnded && (
          <div className="text-center z-10">
