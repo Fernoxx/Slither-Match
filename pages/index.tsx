@@ -67,9 +67,6 @@ export default function Home() {
       
       // Start game when 3+ players
       setTimeout(() => setCountdown(3), 6000)
-      setTimeout(() => {
-        setCountdown(null)
-        setGameStarted(true)
       }, 9000)
     }
   }, [connectWallet, walletAddress, currentView])
