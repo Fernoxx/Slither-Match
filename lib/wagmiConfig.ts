@@ -8,6 +8,3 @@ const BASE_SEPOLIA_RPC_URL = 'https://base-sepolia.blockpi.network/v1/rpc/public
   chains: [base, baseSepolia],
   connectors: [farcasterMiniApp()],
   ssr: true,
-  transports: {
-  }
-})
