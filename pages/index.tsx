@@ -119,8 +119,6 @@ export default function Home() {
       <div className="text-center mb-8 z-10">
         <h1 className="text-5xl font-bold mb-4 text-transparent bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 bg-clip-text">
           🐍 SlitherMatch
-        </h1>
-        <p className="text-xl text-gray-300">
           Eat. Grow. Win. 🏆
         </p>
       </div>
