@@ -63,9 +63,7 @@ export default function Home() {
     if (walletAddress || currentView === 'paid-lobby') {
       setCurrentView('paid-lobby')
       setIsPaidLobby(true)
-      setPlayers(['You'])
-      // Simulate more players joining
-      setTimeout(() => setPlayers(['You', 'Player Alpha']), 2000)
+      setPlayers(['You']
       
       // Start game when 3+ players
       setTimeout(() => setCountdown(3), 6000)
