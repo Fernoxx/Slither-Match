@@ -174,10 +174,6 @@ export default function Home() {
             }}
             onGameWin={(score, isWinner) => {
               handleGameEnd(score, isWinner || false)
-            }}
-          />
-        </div>
-      )}
 
              {gameEnded && (
          <div className="text-center z-10">
