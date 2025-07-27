@@ -62,8 +62,6 @@ export default function Home() {
     setIsPaidLobby(false)
     setPlayers([])
     setGameStartTime(Date.now()) // Track start time
-    setGameStarted(true) // Start immediately
-  }, [])
 
   // Join paid lobby
   const joinPaidLobby = useCallback(async () => {
