@@ -54,12 +54,6 @@ export default function Home() {
     }
   }, [currentView])
 
-  // Join bot lobby
-  const joinBotLobby = useCallback(() => {
-    setCurrentView('bot-lobby')
-    setIsPaidLobby(false)
-    setPlayers([])
-
   // Join paid lobby
   const joinPaidLobby = useCallback(async () => {
     await connectWallet()
