@@ -69,7 +69,6 @@ export default function Home() {
       setPlayers(['You'])
       // Simulate more players joining
       setTimeout(() => setPlayers(['You', 'Player Alpha']), 2000)
-      setTimeout(() => setPlayers(['You', 'Player Alpha', 'Player Beta']), 4000)
       
       // Start game when 3+ players
       setTimeout(() => setCountdown(3), 6000)
