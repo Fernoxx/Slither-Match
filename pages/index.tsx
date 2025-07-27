@@ -102,8 +102,6 @@ export default function Home() {
                 <span className="text-yellow-400 mr-2">💰</span>
                 $1 USDC entry fee
 
-                     {/* Preview Game Box - 444x444px 
-
                            {currentView === 'paid-lobby' && !gameStarted && !gameEnded && (
          <div className="text-center z-10">
            <div className="bg-[#1a1a2e] border border-[#2d2d5e] rounded-lg p-8 mb-6 min-w-[400px]">
