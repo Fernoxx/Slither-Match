@@ -48,7 +48,6 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Wallet connection failed:', error)
-      alert('Please install Farcaster app or Coinbase Wallet to join paid lobby')
     } finally {
       setIsConnecting(false)
     }
