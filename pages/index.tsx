@@ -72,10 +72,6 @@ export default function Home() {
       
     }
   }, [connectWallet, walletAddress, currentView])
-
-  // Share win to Farcaster
-  const shareWin = useCallback(() => {
-    const gameTime = gameStartTime ? Math.floor((Date.now() - gameStartTime) / 1000) : 0
     
 
   // Reset to home
