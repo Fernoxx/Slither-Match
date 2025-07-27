@@ -102,7 +102,7 @@ export default function Home() {
                 <span className="text-yellow-400 mr-2">💰</span>
                 $1 USDC entry fee
 
-                     {/* Preview Game Box - 444x444px */}
+                     {/* Preview Game Box - 444x444px 
 
                            {currentView === 'paid-lobby' && !gameStarted && !gameEnded && (
          <div className="text-center z-10">
