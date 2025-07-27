@@ -109,9 +109,6 @@ export default function Home() {
     setCountdown(null)
     setPlayers([])
     setGameScore(0)
-    setIsWinner(false)
-    setGameStartTime(null)
-  }, [])
 
   return (
     <div className="min-h-screen bg-[#06010a] text-white font-mono flex flex-col items-center justify-center p-5 relative">
