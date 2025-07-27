@@ -52,7 +52,6 @@ export default function Home() {
     if (walletAddress || currentView === 'paid-lobby') {
       setCurrentView('paid-lobby')
       setIsPaidLobby(true)
-      // Simulate more players joining
   const resetToHome = useCallback(() => {
     setCurrentView('home')
     setGameStarted(false)
