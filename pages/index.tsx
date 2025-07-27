@@ -20,7 +20,6 @@ export default function Home() {
   const [gameStarted, setGameStarted] = useState(false)
   const [gameScore, setGameScore] = useState(0)
   const [gameEnded, setGameEnded] = useState(false)
-  const [isWinner, setIsWinner] = useState(false)
   const [gameStartTime, setGameStartTime] = useState<number | null>(null)
 
   // Connect Farcaster wallet (only for paid lobby)
