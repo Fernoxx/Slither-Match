@@ -61,11 +61,6 @@ export default function Home() {
       setCurrentView('paid-lobby')
       setIsPaidLobby(true)
       // Simulate more players joining
-      
-    }
-  }, [connectWallet, walletAddress, currentView])
-    
-
   // Reset to home
   const resetToHome = useCallback(() => {
     setCurrentView('home')
