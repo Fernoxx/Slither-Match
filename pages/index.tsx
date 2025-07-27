@@ -80,7 +80,6 @@ export default function Home() {
   // Share win to Farcaster
   const shareWin = useCallback(() => {
     const gameTime = gameStartTime ? Math.floor((Date.now() - gameStartTime) / 1000) : 0
-    const castText = `🐍 I won the SlitherMatch bot lobby in ${gameTime} seconds! 🏆\n\nPlay now: ${window.location.origin}`
     
     // Try to post to Farcaster via parent frame
     try {
