@@ -45,8 +45,6 @@ export default function Home() {
       setIsConnecting(false)
     }
   }, [currentView])
-
-  // Join paid lobby
   const joinPaidLobby = useCallback(async () => {
     await connectWallet()
     if (walletAddress || currentView === 'paid-lobby') {
