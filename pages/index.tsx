@@ -167,13 +167,6 @@ export default function Home() {
               <div className="flex items-center">
                 <span className="text-yellow-400 mr-2">💰</span>
                 $1 USDC entry fee
-              </div>
-              <div className="flex items-center">
-                <span className="text-green-400 mr-2">🏆</span>
-                Winner takes all
-              </div>
-            </div>
-          </div>
 
                      {/* Preview Game Box - 444x444px */}
            <div className="bg-[#0a0c1a] rounded-lg overflow-hidden" style={{ width: '444px', height: '444px' }}>
