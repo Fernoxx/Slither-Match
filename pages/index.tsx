@@ -77,7 +77,6 @@ export default function Home() {
       // Start game when 3+ players
       setTimeout(() => setCountdown(3), 6000)
       setTimeout(() => setCountdown(2), 7000)
-      setTimeout(() => setCountdown(1), 8000)
       setTimeout(() => {
         setCountdown(null)
         setGameStarted(true)
