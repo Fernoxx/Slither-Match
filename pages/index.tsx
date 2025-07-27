@@ -116,8 +116,6 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#06010a] text-white font-mono flex flex-col items-center justify-center p-5 relative">
       {/* Header - always visible */}
-      <div className="text-center mb-8 z-10">
-        <h1 className="text-5xl font-bold mb-4 text-transparent bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 bg-clip-text">
           🐍 SlitherMatch
           Eat. Grow. Win. 🏆
         </p>
