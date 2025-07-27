@@ -64,9 +64,6 @@ export default function Home() {
     setCountdown(null)
     setPlayers([])
     setGameScore(0)
-    setIsWinner(false)
-    setGameStartTime(null)
-  }, [])
 
   return (
 
