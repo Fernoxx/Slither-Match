@@ -6,7 +6,6 @@ declare global {
   interface Window {
     farcaster?: {
       isConnected: boolean
-      connect: () => Promise<{ address: string }>
     }
   }
 }
