@@ -133,7 +133,6 @@ export default function Home() {
               {isConnecting ? '⏳ Connecting...' : '💰 Join Paid Lobby ($1 USDC)'}
             </button>
             <button
-              onClick={joinBotLobby}
               className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 
                          text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 
                          transform hover:scale-105 hover:shadow-xl"
