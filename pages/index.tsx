@@ -124,7 +124,6 @@ export default function Home() {
               onClick={joinPaidLobby}
               disabled={isConnecting}
             >
-              {isConnecting ? '⏳ Connecting...' : '💰 Join Paid Lobby ($1 USDC)'}
             </button>
             <button
               onClick={joinBotLobby}
