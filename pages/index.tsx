@@ -6,6 +6,7 @@ declare global {
   interface Window {
     farcaster?: {
       isConnected: boolean
+      connect: () => Promise<{ address: string }>
     }
   }
 }
@@ -15,10 +16,12 @@ export default function Home() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
   const [players, setPlayers] = useState<string[]>([])
+  const [countdown, setCountdown] = useState<number | null>(null)
   const [gameStarted, setGameStarted] = useState(false)
   const [gameScore, setGameScore] = useState(0)
   const [gameEnded, setGameEnded] = useState(false)
   const [isPaidLobby, setIsPaidLobby] = useState(false)
+  const [isWinner, setIsWinner] = useState(false)
   const [gameStartTime, setGameStartTime] = useState<number | null>(null)
 
   // Connect Farcaster wallet (only for paid lobby)
@@ -30,9 +33,13 @@ export default function Home() {
 
     setIsConnecting(true)
     try {
+      // Try Farcaster SDK first
+      if (typeof window !== 'undefined' && window.farcaster) {
+        const result = await window.farcaster.connect()
         setWalletAddress(result.address)
       } else {
         // Fallback to Coinbase Smart Wallet
+        const { createBaseAccountSDK } = await import('@base-org/account')
         const sdk = createBaseAccountSDK({
           appName: 'SlitherMatch',
         })
@@ -43,12 +50,14 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Wallet connection failed:', error)
+      alert('Please install Farcaster app or Coinbase Wallet to join paid lobby')
     } finally {
       setIsConnecting(false)
     }
   }, [currentView])
 
   // Join bot lobby
+  const joinBotLobby = useCallback(() => {
     setCurrentView('bot-lobby')
     setIsPaidLobby(false)
     setPlayers([])
@@ -62,13 +71,24 @@ export default function Home() {
     if (walletAddress || currentView === 'paid-lobby') {
       setCurrentView('paid-lobby')
       setIsPaidLobby(true)
-      setPlayers(['You']
+      setPlayers(['You'])
+      // Simulate more players joining
+      setTimeout(() => setPlayers(['You', 'Player Alpha']), 2000)
+      setTimeout(() => setPlayers(['You', 'Player Alpha', 'Player Beta']), 4000)
       
       // Start game when 3+ players
       setTimeout(() => setCountdown(3), 6000)
+      setTimeout(() => setCountdown(2), 7000)
+      setTimeout(() => setCountdown(1), 8000)
+      setTimeout(() => {
+        setCountdown(null)
+        setGameStarted(true)
       }, 9000)
     }
   }, [connectWallet, walletAddress, currentView])
+
+  // Handle game end
+  const handleGameEnd = useCallback((score: number, winner: boolean = false) => {
     setGameScore(score)
     setIsWinner(winner)
     setGameEnded(true)
@@ -78,6 +98,7 @@ export default function Home() {
   // Share win to Farcaster
   const shareWin = useCallback(() => {
     const gameTime = gameStartTime ? Math.floor((Date.now() - gameStartTime) / 1000) : 0
+    const castText = `🐍 I won the SlitherMatch bot lobby in ${gameTime} seconds! 🏆\n\nPlay now: ${window.location.origin}`
     
     // Try to post to Farcaster via parent frame
     try {
@@ -87,6 +108,9 @@ export default function Home() {
           text: castText
         }, '*')
       } else {
+        // Fallback to copy to clipboard
+        navigator.clipboard.writeText(castText)
+        alert('Win message copied to clipboard! Share it on Farcaster!')
       }
     } catch (error) {
       // Fallback to copy to clipboard
@@ -103,11 +127,18 @@ export default function Home() {
     setCountdown(null)
     setPlayers([])
     setGameScore(0)
+    setIsWinner(false)
+    setGameStartTime(null)
+  }, [])
 
   return (
     <div className="min-h-screen bg-[#06010a] text-white font-mono flex flex-col items-center justify-center p-5 relative">
       {/* Header - always visible */}
+      <div className="text-center mb-8 z-10">
+        <h1 className="text-5xl font-bold mb-4 text-transparent bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 bg-clip-text">
           🐍 SlitherMatch
+        </h1>
+        <p className="text-xl text-gray-300">
           Eat. Grow. Win. 🏆
         </p>
       </div>
@@ -119,7 +150,11 @@ export default function Home() {
             <button
               onClick={joinPaidLobby}
               disabled={isConnecting}
+              className="bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 
+                         text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 
+                         transform hover:scale-105 hover:shadow-xl disabled:opacity-50"
             >
+              {isConnecting ? '⏳ Connecting...' : '💰 Join Paid Lobby ($1 USDC)'}
             </button>
             <button
               onClick={joinBotLobby}
@@ -130,6 +165,8 @@ export default function Home() {
               🤖 Play with Bots
             </button>
           </div>
+
+          {/* Game Rules */}
           <div className="bg-[#1a1a2e] border border-[#2d2d5e] rounded-lg p-6 mb-8 max-w-md">
             <h3 className="text-xl font-bold mb-4 text-purple-400 flex items-center">
               🎮 Game Rules
@@ -275,7 +312,9 @@ export default function Home() {
                  } else {
                    joinPaidLobby()
                  }
-               }
+               }}
+               className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg 
+                          transition-all duration-300 transform hover:scale-105"
              >
                🔄 Play Again
              </button>
