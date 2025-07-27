@@ -61,7 +61,7 @@ export default function Home() {
       setCurrentView('paid-lobby')
       setIsPaidLobby(true)
       // Simulate more players joining
-  // Reset to home
+  // Reset
   const resetToHome = useCallback(() => {
     setCurrentView('home')
     setGameStarted(false)
