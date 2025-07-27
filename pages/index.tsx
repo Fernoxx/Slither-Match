@@ -150,8 +150,6 @@ export default function Home() {
               🤖 Play with Bots
             </button>
           </div>
-
-          {/* Game Rules */}
           <div className="bg-[#1a1a2e] border border-[#2d2d5e] rounded-lg p-6 mb-8 max-w-md">
             <h3 className="text-xl font-bold mb-4 text-purple-400 flex items-center">
               🎮 Game Rules
