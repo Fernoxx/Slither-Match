@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react'
 import SnakeGame from '../components/SnakeGame'
 
-// Wallet integration for Farcaster miniapps
 declare global {
   interface Window {
     farcaster?: {
