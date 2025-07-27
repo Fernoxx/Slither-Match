@@ -27,7 +27,6 @@ export default function Home() {
 
     setIsConnecting(true)
     try {
-      // Try Farcaster SDK first
       if (typeof window !== 'undefined' && window.farcaster) {
         const result = await window.farcaster.connect()
         setWalletAddress(result.address)
