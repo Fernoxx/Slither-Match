@@ -81,14 +81,6 @@ export default function Home() {
     }
   }, [connectWallet, walletAddress, currentView])
 
-  // Handle game end
-  const handleGameEnd = useCallback((score: number, winner: boolean = false) => {
-    setGameScore(score)
-    setIsWinner(winner)
-    setGameEnded(true)
-    setGameStarted(false)
-  }, [])
-
   // Share win to Farcaster
   const shareWin = useCallback(() => {
     const gameTime = gameStartTime ? Math.floor((Date.now() - gameStartTime) / 1000) : 0
