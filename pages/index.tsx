@@ -89,13 +89,6 @@ export default function Home() {
   // Reset to home
   const resetToHome = useCallback(() => {
     setCurrentView('home')
-    setGameStarted(false)
-    setGameEnded(false)
-    setCountdown(null)
-    setPlayers([])
-    setGameScore(0)
-    setIsWinner(false)
-    setGameStartTime(null)
   }, [])
 
   return (
