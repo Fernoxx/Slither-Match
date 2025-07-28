@@ -50,18 +50,6 @@ export default function Home() {
     }
   }, [currentView])
 
-  // Join paid lobby
-  const joinPaidLobby = useCallback(async () => {
-    await connectWallet()
-    if (walletAddress || currentView === 'paid-lobby') {
-      setCurrentView('paid-lobby')
-      setIsPaidLobby(true)
-      setPlayers(['You'])
-      // Simulate more players joining
-      setTimeout(() => setPlayers(['You', 'Player Alpha']), 2000)
-      setTimeout(() => setPlayers(['You', 'Player Alpha', 'Player Beta']), 4000)
-      
-
   // Share win to Farcaster
   const shareWin = useCallback(() => {
     const gameTime = gameStartTime ? Math.floor((Date.now() - gameStartTime) / 1000) : 0
