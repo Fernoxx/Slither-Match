@@ -61,16 +61,6 @@ export default function Home() {
       setTimeout(() => setPlayers(['You', 'Player Alpha']), 2000)
       setTimeout(() => setPlayers(['You', 'Player Alpha', 'Player Beta']), 4000)
       
-      // Start game when 3+ players
-      setTimeout(() => setCountdown(3), 6000)
-      setTimeout(() => setCountdown(2), 7000)
-      setTimeout(() => setCountdown(1), 8000)
-      setTimeout(() => {
-        setCountdown(null)
-        setGameStarted(true)
-      }, 9000)
-    }
-  }, [connectWallet, walletAddress, currentView])
 
   // Share win to Farcaster
   const shareWin = useCallback(() => {
