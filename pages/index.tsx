@@ -20,6 +20,9 @@ export default function Home() {
   const [gameStarted, setGameStarted] = useState(false)
   const [gameScore, setGameScore] = useState(0)
   const [gameEnded, setGameEnded] = useState(false)
+  const [isPaidLobby, setIsPaidLobby] = useState(false)
+  const [isWinner, setIsWinner] = useState(false)
+  const [gameStartTime, setGameStartTime] = useState<number | null>(null)
 
   // Connect Farcaster wallet (only for paid lobby)
   const connectWallet = useCallback(async () => {
@@ -31,9 +34,12 @@ export default function Home() {
     setIsConnecting(true)
     try {
       // Try Farcaster SDK first
+      if (typeof window !== 'undefined' && window.farcaster) {
+        const result = await window.farcaster.connect()
         setWalletAddress(result.address)
       } else {
         // Fallback to Coinbase Smart Wallet
+        const { createBaseAccountSDK } = await import('@base-org/account')
         const sdk = createBaseAccountSDK({
           appName: 'SlitherMatch',
         })
@@ -59,6 +65,7 @@ export default function Home() {
     setGameStarted(true) // Start immediately
   }, [])
 
+  // Join paid lobby
   const joinPaidLobby = useCallback(async () => {
     await connectWallet()
     if (walletAddress || currentView === 'paid-lobby') {
@@ -73,16 +80,55 @@ export default function Home() {
       setTimeout(() => setCountdown(3), 6000)
       setTimeout(() => setCountdown(2), 7000)
       setTimeout(() => setCountdown(1), 8000)
+      setTimeout(() => {
+        setCountdown(null)
+        setGameStarted(true)
       }, 9000)
     }
   }, [connectWallet, walletAddress, currentView])
 
+  // Handle game end
+  const handleGameEnd = useCallback((score: number, winner: boolean = false) => {
+    setGameScore(score)
+    setIsWinner(winner)
+    setGameEnded(true)
+    setGameStarted(false)
+  }, [])
+
   // Share win to Farcaster
   const shareWin = useCallback(() => {
+    const gameTime = gameStartTime ? Math.floor((Date.now() - gameStartTime) / 1000) : 0
+    const castText = `🐍 I won the SlitherMatch bot lobby in ${gameTime} seconds! 🏆\n\nPlay now: ${window.location.origin}`
+    
+    // Try to post to Farcaster via parent frame
+    try {
+      if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: 'share_cast',
+          text: castText
+        }, '*')
+      } else {
+        // Fallback to copy to clipboard
+        navigator.clipboard.writeText(castText)
+        alert('Win message copied to clipboard! Share it on Farcaster!')
+      }
+    } catch (error) {
+      // Fallback to copy to clipboard
+      navigator.clipboard.writeText(castText)
+      alert('Win message copied to clipboard! Share it on Farcaster!')
+    }
+  }, [gameStartTime])
 
   // Reset to home
   const resetToHome = useCallback(() => {
     setCurrentView('home')
+    setGameStarted(false)
+    setGameEnded(false)
+    setCountdown(null)
+    setPlayers([])
+    setGameScore(0)
+    setIsWinner(false)
+    setGameStartTime(null)
   }, [])
 
   return (
@@ -104,8 +150,22 @@ export default function Home() {
             <button
               onClick={joinPaidLobby}
               disabled={isConnecting}
-              className
+              className="bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 
+                         text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 
+                         transform hover:scale-105 hover:shadow-xl disabled:opacity-50"
             >
+              {isConnecting ? '⏳ Connecting...' : '💰 Join Paid Lobby ($1 USDC)'}
+            </button>
+            <button
+              onClick={joinBotLobby}
+              className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 
+                         text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 
+                         transform hover:scale-105 hover:shadow-xl"
+            >
+              🤖 Play with Bots
+            </button>
+          </div>
+
           {/* Game Rules */}
           <div className="bg-[#1a1a2e] border border-[#2d2d5e] rounded-lg p-6 mb-8 max-w-md">
             <h3 className="text-xl font-bold mb-4 text-purple-400 flex items-center">
@@ -133,7 +193,11 @@ export default function Home() {
               onScoreChange={() => {}}
               onGameOver={() => {}}
               onGameWin={() => {}}
-    
+            />
+          </div>
+        </div>
+      )}
+
                            {currentView === 'paid-lobby' && !gameStarted && !gameEnded && (
          <div className="text-center z-10">
            <div className="bg-[#1a1a2e] border border-[#2d2d5e] rounded-lg p-8 mb-6 min-w-[400px]">
@@ -165,6 +229,16 @@ export default function Home() {
                 </div>
               </div>
             ) : (
+              <div className="text-center">
+                <div className="text-lg text-yellow-400 font-semibold">
+                  Waiting for players...
+                </div>
+                <div className="text-sm text-gray-400 mt-2">
+                  {currentView === 'paid-lobby' ? 'Need 3+ players to start' : 'Starting soon...'}
+                </div>
+              </div>
+            )}
+          </div>
 
           <button
             onClick={resetToHome}
