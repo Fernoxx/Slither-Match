@@ -84,15 +84,6 @@ export default function Home() {
             </div>
           </div>
 
-                     {/* Preview Game Box - 444x444px */}
-           <div className="bg-[#0a0c1a] rounded-lg overflow-hidden" style={{ width: '444px', height: '444px' }}>
-            <SnakeGame 
-              isPlaying={true}
-              isBot={true} 
-              isPreview={true}
-              isPaidLobby={false}
-              onScoreChange={() => {}}
-
                            {currentView === 'paid-lobby' && !gameStarted && !gameEnded && (
          <div className="text-center z-10">
            <div className="bg-[#1a1a2e] border border-[#2d2d5e] rounded-lg p-8 mb-6 min-w-[400px]">
