@@ -104,12 +104,6 @@ export default function Home() {
               isPreview={true}
               isPaidLobby={false}
               onScoreChange={() => {}}
-              onGameOver={() => {}}
-              onGameWin={() => {}}
-            />
-          </div>
-        </div>
-      )}
 
                            {currentView === 'paid-lobby' && !gameStarted && !gameEnded && (
          <div className="text-center z-10">
