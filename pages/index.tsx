@@ -165,16 +165,6 @@ export default function Home() {
                 </div>
               </div>
             ) : (
-              <div className="text-center">
-                <div className="text-lg text-yellow-400 font-semibold">
-                  Waiting for players...
-                </div>
-                <div className="text-sm text-gray-400 mt-2">
-                  {currentView === 'paid-lobby' ? 'Need 3+ players to start' : 'Starting soon...'}
-                </div>
-              </div>
-            )}
-          </div>
 
           <button
             onClick={resetToHome}
