@@ -60,7 +60,6 @@ export default function Home() {
     setGameStarted(true) // Start immediately
   }, [])
 
-  // Join paid lobby
   const joinPaidLobby = useCallback(async () => {
     await connectWallet()
     if (walletAddress || currentView === 'paid-lobby') {
