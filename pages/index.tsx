@@ -94,21 +94,6 @@ export default function Home() {
   const shareWin = useCallback(() => {
     const gameTime = gameStartTime ? Math.floor((Date.now() - gameStartTime) / 1000) : 0
     const castText = `🐍 I won the SlitherMatch bot lobby in ${gameTime} seconds! 🏆\n\nPlay now: ${window.location.origin}`
-    
-    // Try to post to Farcaster via parent frame
-    try {
-      if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
-        window.parent.postMessage({
-          type: 'share_cast',
-          text: castText
-        }, '*')
-      } else {
-        // Fallback to copy to clipboard
-        navigator.clipboard.writeText(castText)
-        alert('Win message copied to clipboard! Share it on Farcaster!')
-      }
-    } catch (error) {
-      // Fallback to copy to clipboard
 
   // Reset to home
   const resetToHome = useCallback(() => {
