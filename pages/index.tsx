@@ -108,17 +108,6 @@ export default function Home() {
               disabled={isConnecting}
               className
             >
-              {isConnecting ? '⏳ Connecting...' : '💰 Join Paid Lobby ($1 USDC)'}
-            </button>
-            <button
-              onClick={joinBotLobby}
-              className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 
-                         text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 
-                         transform hover:scale-105 hover:shadow-xl"
-            >
-            </button>
-          </div>
-
           {/* Game Rules */}
           <div className="bg-[#1a1a2e] border border-[#2d2d5e] rounded-lg p-6 mb-8 max-w-md">
             <h3 className="text-xl font-bold mb-4 text-purple-400 flex items-center">
