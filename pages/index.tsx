@@ -127,7 +127,6 @@ export default function Home() {
                          text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 
                          transform hover:scale-105 hover:shadow-xl"
             >
-              🤖 Play with Bots
             </button>
           </div>
 
