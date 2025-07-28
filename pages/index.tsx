@@ -110,10 +110,6 @@ export default function Home() {
       }
     } catch (error) {
       // Fallback to copy to clipboard
-      navigator.clipboard.writeText(castText)
-      alert('Win message copied to clipboard! Share it on Farcaster!')
-    }
-  }, [gameStartTime])
 
   // Reset to home
   const resetToHome = useCallback(() => {
