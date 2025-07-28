@@ -13,10 +13,6 @@ declare global {
 
 export default function Home() {
   const [currentView, setCurrentView] = useState<'home' | 'bot-lobby' | 'paid-lobby'>('home')
-  const [walletAddress, setWalletAddress] = useState<string | null>(null)
-  const [isConnecting, setIsConnecting] = useState(false)
-  const [players, setPlayers] = useState<string[]>([])
-  const [countdown, setCountdown] = useState<number | null>(null)
 
   // Connect Farcaster wallet (only for paid lobby)
   const connectWallet = useCallback(async () => {
