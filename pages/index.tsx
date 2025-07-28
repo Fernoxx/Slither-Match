@@ -38,13 +38,6 @@ export default function Home() {
         const accounts = await sdk.getProvider().request({ method: 'eth_accounts' }) as string[]
         setWalletAddress(accounts[0])
       }
-    } catch (error) {
-      console.error('Wallet connection failed:', error)
-      alert('Please install Farcaster app or Coinbase Wallet to join paid lobby')
-    } finally {
-      setIsConnecting(false)
-    }
-  }, [currentView])
 
   // Share win to Farcaster
   const shareWin = useCallback(() => {
