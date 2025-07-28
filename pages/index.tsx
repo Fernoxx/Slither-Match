@@ -189,11 +189,7 @@ export default function Home() {
               onScoreChange={() => {}}
               onGameOver={() => {}}
               onGameWin={() => {}}
-            />
-          </div>
-        </div>
-      )}
-
+    
                            {currentView === 'paid-lobby' && !gameStarted && !gameEnded && (
          <div className="text-center z-10">
            <div className="bg-[#1a1a2e] border border-[#2d2d5e] rounded-lg p-8 mb-6 min-w-[400px]">
