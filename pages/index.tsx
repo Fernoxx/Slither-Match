@@ -117,9 +117,7 @@ export default function Home() {
             <button
               onClick={joinPaidLobby}
               disabled={isConnecting}
-              className="bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 
-                         text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 
-                         transform hover:scale-105 hover:shadow-xl disabled:opacity-50"
+              className
             >
               {isConnecting ? '⏳ Connecting...' : '💰 Join Paid Lobby ($1 USDC)'}
             </button>
