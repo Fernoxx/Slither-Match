@@ -13,12 +13,14 @@
   - Farcaster username integration
 
 ### PaidLobbyHighlights.sol
-- **Contract Address**: `TBD`
+- **Contract Address**: `0x39e33a9fff9cbb672dedb2fa1018adfc89c105d4`
 - **Purpose**: Saves winner highlights and prize amounts for paid lobbies
 - **Features**:
   - Winner records with prize amounts
   - Player statistics tracking
   - Recent highlights management
+  - Top earners leaderboard
+  - Enhanced comment documentation
   - Farcaster username integration
 
 ### CasualLobbyLeaderboard.sol

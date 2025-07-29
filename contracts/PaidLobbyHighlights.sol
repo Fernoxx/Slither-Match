@@ -58,6 +58,7 @@ contract PaidLobbyHighlights {
             gameDuration: _gameDuration
         });
 
+        // Update player stats
         PlayerStats storage stats = playerStats[_winner];
         stats.totalWins++;
         stats.totalEarnings += _prizeAmount;
@@ -66,10 +67,13 @@ contract PaidLobbyHighlights {
             stats.highestPrize = _prizeAmount;
         }
 
+        // Track player's highlights
         playerHighlights[_winner].push(highlightId);
 
+        // Update recent highlights
         recentHighlights.push(highlightId);
         if (recentHighlights.length > MAX_RECENT) {
+            // Remove oldest highlight
             for (uint i = 0; i < recentHighlights.length - 1; i++) {
                 recentHighlights[i] = recentHighlights[i + 1];
             }
@@ -104,6 +108,63 @@ contract PaidLobbyHighlights {
         }
         
         return playerGames;
+    }
+
+    function getTopEarners(uint256 _count) external view returns (
+        address[] memory players,
+        string[] memory usernames,
+        uint256[] memory earnings
+    ) {
+        require(_count > 0, "Count must be greater than 0");
+        
+        // Create arrays to store results
+        address[] memory topPlayers = new address[](_count);
+        string[] memory topUsernames = new string[](_count);
+        uint256[] memory topEarnings = new uint256[](_count);
+        
+        // Get recent highlights and aggregate earnings
+        uint256 processed = 0;
+        for (uint256 i = 0; i < recentHighlights.length && processed < _count; i++) {
+            Highlight memory h = highlights[recentHighlights[i]];
+            
+            // Check if player already in list
+            bool found = false;
+            for (uint256 j = 0; j < processed; j++) {
+                if (topPlayers[j] == h.winner) {
+                    found = true;
+                    break;
+                }
+            }
+            
+            if (!found) {
+                topPlayers[processed] = h.winner;
+                topUsernames[processed] = h.farcasterUsername;
+                topEarnings[processed] = playerStats[h.winner].totalEarnings;
+                processed++;
+            }
+        }
+        
+        // Sort by earnings (bubble sort for simplicity)
+        for (uint256 i = 0; i < processed - 1; i++) {
+            for (uint256 j = 0; j < processed - i - 1; j++) {
+                if (topEarnings[j] < topEarnings[j + 1]) {
+                    // Swap
+                    address tempAddr = topPlayers[j];
+                    topPlayers[j] = topPlayers[j + 1];
+                    topPlayers[j + 1] = tempAddr;
+                    
+                    string memory tempUser = topUsernames[j];
+                    topUsernames[j] = topUsernames[j + 1];
+                    topUsernames[j + 1] = tempUser;
+                    
+                    uint256 tempEarn = topEarnings[j];
+                    topEarnings[j] = topEarnings[j + 1];
+                    topEarnings[j + 1] = tempEarn;
+                }
+            }
+        }
+        
+        return (topPlayers, topUsernames, topEarnings);
     }
 
     function transferOwnership(address newOwner) external onlyOwner {
