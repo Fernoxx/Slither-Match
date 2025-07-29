@@ -81,6 +81,7 @@ contract FreeplayLeaderboard {
             });
         }
 
+        // Sort by composite score (score + kills * 10)
         for (uint256 i = 0; i < allEntries.length - 1; i++) {
             for (uint256 j = i + 1; j < allEntries.length; j++) {
                 uint256 scoreI = allEntries[i].score + (allEntries[i].kills * 10);
@@ -104,6 +105,59 @@ contract FreeplayLeaderboard {
 
     function getPlayerStats(address _player) external view returns (PlayerStats memory) {
         return playerStats[_player];
+    }
+
+    function getTopScorers(uint256 _count) external view returns (LeaderboardEntry[] memory) {
+        return _getTopByMetric(_count, true);
+    }
+
+    function getTopKillers(uint256 _count) external view returns (LeaderboardEntry[] memory) {
+        return _getTopByMetric(_count, false);
+    }
+
+    function _getTopByMetric(uint256 _count, bool _byScore) internal view returns (LeaderboardEntry[] memory) {
+        uint256 count = _count;
+        if (count > players.length) {
+            count = players.length;
+        }
+
+        LeaderboardEntry[] memory allEntries = new LeaderboardEntry[](players.length);
+        for (uint256 i = 0; i < players.length; i++) {
+            PlayerStats memory stats = playerStats[players[i]];
+            allEntries[i] = LeaderboardEntry({
+                player: players[i],
+                username: stats.farcasterUsername,
+                score: stats.highestScore,
+                kills: stats.totalKills,
+                rank: 0
+            });
+        }
+
+        // Sort by either score or kills
+        for (uint256 i = 0; i < allEntries.length - 1; i++) {
+            for (uint256 j = i + 1; j < allEntries.length; j++) {
+                bool shouldSwap;
+                if (_byScore) {
+                    shouldSwap = allEntries[j].score > allEntries[i].score;
+                } else {
+                    shouldSwap = allEntries[j].kills > allEntries[i].kills;
+                }
+                
+                if (shouldSwap) {
+                    LeaderboardEntry memory temp = allEntries[i];
+                    allEntries[i] = allEntries[j];
+                    allEntries[j] = temp;
+                }
+            }
+        }
+
+        LeaderboardEntry[] memory topEntries = new LeaderboardEntry[](count);
+        for (uint256 i = 0; i < count; i++) {
+            topEntries[i] = allEntries[i];
+            topEntries[i].rank = i + 1;
+        }
+
+        return topEntries;
     }
 
     function transferOwnership(address newOwner) external onlyOwner {
