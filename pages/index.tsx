@@ -14,7 +14,7 @@ declare global {
 }
 
 export default function Home() {
-  const [currentView, setCurrentView] = useState<'home' | 'bot-lobby' | 'paid-lobby' | 'casual-lobby' | 'casual-waiting'>('home')
+  const [currentView, setCurrentView] = useState<'home' | 'bot-lobby' | 'freeplay-lobby' | 'paid-lobby' | 'casual-lobby' | 'casual-waiting'>('home')
   const [walletAddress, setWalletAddress] = useState<string | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
   const [players, setPlayers] = useState<string[]>([])

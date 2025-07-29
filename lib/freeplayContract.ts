@@ -1,4 +1,4 @@
-import { ethers } from 'ethers'
+import { ethers, BrowserProvider, Contract, ContractTransactionResponse, ContractTransactionReceipt } from 'ethers'
 
 // FreeplayLeaderboard contract address from your deployment
 const FREEPLAY_CONTRACT_ADDRESS = '0x278db35874c805b27a709ba3777e99e09e812063'
@@ -175,8 +175,8 @@ export interface LeaderboardEntry {
 }
 
 class FreeplayContractService {
-  private contract: ethers.Contract | null = null
-  private provider: ethers.providers.Web3Provider | null = null
+  private contract: Contract | null = null
+  private provider: BrowserProvider | null = null
   private signer: ethers.Signer | null = null
 
   async connect() {
@@ -184,11 +184,11 @@ class FreeplayContractService {
       throw new Error('MetaMask or Web3 wallet not found')
     }
 
-    this.provider = new ethers.providers.Web3Provider(window.ethereum)
+    this.provider = new BrowserProvider(window.ethereum)
     await this.provider.send('eth_requestAccounts', [])
-    this.signer = this.provider.getSigner()
+    this.signer = await this.provider.getSigner()
     
-    this.contract = new ethers.Contract(
+    this.contract = new Contract(
       FREEPLAY_CONTRACT_ADDRESS,
       FREEPLAY_CONTRACT_ABI,
       this.signer
@@ -200,7 +200,7 @@ class FreeplayContractService {
     farcasterUsername: string,
     score: number,
     kills: number = 0
-  ): Promise<ethers.ContractTransaction> {
+  ): Promise<ContractTransactionResponse> {
     if (!this.contract) {
       throw new Error('Contract not connected')
     }
@@ -231,10 +231,10 @@ class FreeplayContractService {
       return {
         walletAddress: stats.walletAddress,
         farcasterUsername: stats.farcasterUsername,
-        highestScore: stats.highestScore.toNumber(),
-        totalKills: stats.totalKills.toNumber(),
-        gamesPlayed: stats.gamesPlayed.toNumber(),
-        lastUpdateTime: stats.lastUpdateTime.toNumber()
+        highestScore: Number(stats.highestScore),
+        totalKills: Number(stats.totalKills),
+        gamesPlayed: Number(stats.gamesPlayed),
+        lastUpdateTime: Number(stats.lastUpdateTime)
       }
     } catch (error) {
       console.error('Error getting player stats:', error)
@@ -253,9 +253,9 @@ class FreeplayContractService {
       return leaderboard.map((entry: any) => ({
         player: entry.player,
         username: entry.username,
-        score: entry.score.toNumber(),
-        kills: entry.kills.toNumber(),
-        rank: entry.rank.toNumber()
+        score: Number(entry.score),
+        kills: Number(entry.kills),
+        rank: Number(entry.rank)
       }))
     } catch (error) {
       console.error('Error getting leaderboard:', error)
@@ -263,7 +263,7 @@ class FreeplayContractService {
     }
   }
 
-  async waitForTransaction(tx: ethers.ContractTransaction): Promise<ethers.ContractReceipt> {
+  async waitForTransaction(tx: ContractTransactionResponse): Promise<ContractTransactionReceipt | null> {
     if (!this.provider) {
       throw new Error('Provider not connected')
     }
