@@ -333,6 +333,14 @@ export default function Home() {
                 <span className="text-green-400 mr-2">•</span>
                 Winner takes all
               </div>
+              <div className="flex items-start">
+                <span className="text-cyan-400 mr-2">•</span>
+                3-second safe zone at start
+              </div>
+              <div className="flex items-start">
+                <span className="text-purple-400 mr-2">•</span>
+                5-minute game duration
+              </div>
             </div>
           </div>
         </div>

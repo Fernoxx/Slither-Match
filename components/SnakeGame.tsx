@@ -29,6 +29,7 @@ interface Snake {
   isPlayer: boolean
   radius: number
   isDead: boolean
+  spawnTime?: number // Add spawn time for grace period
 }
 
 interface Food {
@@ -58,7 +59,7 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
   const BOT_COUNT = isPaidLobby ? 4 : (isCasualLobby ? 0 : 10) // No bots in casual lobby
   const FOOD_COUNT = isBot ? 400 : (isPaidLobby ? 200 : (isCasualLobby ? 150 : 200)) // Increased food counts
   const MAX_FOOD = FOOD_COUNT * 2 // Cap maximum food to prevent lag
-  const GAME_DURATION = 180 // 3 minutes
+  const GAME_DURATION = 300 // Increased from 180 to 300 (5 minutes instead of 3)
   const SNAKE_SPEED = 1.8 // Slightly reduced from 2
   const BASE_SNAKE_RADIUS = 8 // Slightly increased from 7
   const JOYSTICK_SIZE = 80
@@ -255,7 +256,8 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
         score: 0,
         isPlayer: true,
         radius: BASE_SNAKE_RADIUS,
-        isDead: false
+        isDead: false,
+        spawnTime: Date.now() // Add spawn time for grace period
       })
       
       // Set camera to follow player (unless preview)
@@ -296,7 +298,8 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
         speed: SNAKE_SPEED + Math.random() * 0.4 - 0.2, // Vary speed more
         angle: Math.random() * 2 * Math.PI,
         radius: BASE_SNAKE_RADIUS + (isPreview ? Math.floor(Math.random() * 6) : 0),
-        isDead: false
+        isDead: false,
+        spawnTime: Date.now() // Add spawn time for grace period
       })
     }
 
@@ -341,7 +344,7 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
     }
 
     // Check wall collision - die if hitting boundaries (with buffer to prevent false positives)
-    const wallBuffer = 2 // Small buffer to prevent false wall collisions
+    const wallBuffer = 8 // Increased buffer from 2 to 8 to prevent accidental wall deaths
     if (newHead.x < snake.radius + wallBuffer || 
         newHead.x > WORLD_SIZE - snake.radius - wallBuffer || 
         newHead.y < snake.radius + wallBuffer || 
@@ -390,7 +393,7 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
     const dx = pos1.x - pos2.x
     const dy = pos1.y - pos2.y
     const distance = Math.sqrt(dx * dx + dy * dy)
-    return distance < (radius1 + radius2) * 0.9 // Slightly more forgiving collision
+    return distance < (radius1 + radius2) * 0.8 // More forgiving collision (reduced from 0.9 to 0.8)
   }, [])
 
   // Check collisions for all snakes and update accordingly
@@ -444,17 +447,23 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
       
       // Check snake-to-snake collision with smaller hitbox
       if (!newSnake.isDead) {
-        for (const otherSnake of currentSnakes) {
-          if (otherSnake.id === snake.id || otherSnake.isDead) continue
-          
-          // Check collision with other snake's segments (much smaller hitbox)
-          for (let i = 0; i < otherSnake.segments.length; i++) {
-            if (checkCollision(head, snake.radius * 0.7, otherSnake.segments[i], otherSnake.radius * 0.7)) {
-              newSnake.isDead = true
-              break
+        // Grace period: Don't check collisions for first 3 seconds after spawn
+        const gracePeriod = 3000 // 3 seconds in milliseconds
+        const hasGracePeriod = snake.spawnTime && (Date.now() - snake.spawnTime < gracePeriod)
+        
+        if (!hasGracePeriod) {
+          for (const otherSnake of currentSnakes) {
+            if (otherSnake.id === snake.id || otherSnake.isDead) continue
+            
+            // Check collision with other snake's segments (more forgiving hitbox)
+            for (let i = 0; i < otherSnake.segments.length; i++) {
+              if (checkCollision(head, snake.radius * 0.5, otherSnake.segments[i], otherSnake.radius * 0.5)) {
+                newSnake.isDead = true
+                break
+              }
             }
+            if (newSnake.isDead) break
           }
-          if (newSnake.isDead) break
         }
       }
 
@@ -894,7 +903,21 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
           
           const radius = index === 0 ? snake.radius + 1 : snake.radius
           
-          // Draw snake segment
+          // Check if snake is in grace period
+          const gracePeriod = 3000 // 3 seconds in milliseconds
+          const hasGracePeriod = snake.spawnTime && (Date.now() - snake.spawnTime < gracePeriod)
+          
+          // Draw snake segment with grace period glow
+          if (hasGracePeriod && snake.isPlayer) {
+            // Draw glowing outline for grace period
+            ctx.fillStyle = '#ffffff'
+            ctx.globalAlpha = 0.3
+            ctx.beginPath()
+            ctx.arc(screenX, screenY, radius + 3, 0, 2 * Math.PI)
+            ctx.fill()
+            ctx.globalAlpha = 1.0
+          }
+          
           ctx.fillStyle = snake.color
           ctx.beginPath()
           ctx.arc(screenX, screenY, radius, 0, 2 * Math.PI)
@@ -1031,6 +1054,20 @@ const SnakeGame: React.FC<SnakeGameProps> = ({
             <div className="text-purple-400 text-lg mb-3">
               Time: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
             </div>
+            
+            {/* Grace Period Indicator */}
+            {(() => {
+              const playerSnake = snakes.find(s => s.isPlayer)
+              const gracePeriod = 3000
+              const hasGracePeriod = playerSnake?.spawnTime && (Date.now() - playerSnake.spawnTime < gracePeriod)
+              const remainingGrace = hasGracePeriod ? Math.ceil((gracePeriod - (Date.now() - (playerSnake?.spawnTime || 0))) / 1000) : 0
+              
+              return hasGracePeriod ? (
+                <div className="text-cyan-400 text-sm mb-2 animate-pulse">
+                  Safe Zone: {remainingGrace}s
+                </div>
+              ) : null
+            })()}
 
             <div className="relative w-[444px] h-[444px] bg-[#0a0c1a] border border-[#1c1f2e] rounded">
               <canvas 
