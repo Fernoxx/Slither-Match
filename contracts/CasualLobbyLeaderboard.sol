@@ -5,7 +5,7 @@ contract CasualLobbyLeaderboard {
     struct GameRecord {
         address player;
         string farcasterUsername;
-        uint256 winTime;
+        uint256 winTime; // in seconds
         uint256 timestamp;
         uint256 score;
     }
@@ -42,6 +42,7 @@ contract CasualLobbyLeaderboard {
     ) external onlyOwner {
         require(_winTime > 0, "Invalid win time");
 
+        // Update player record
         PlayerRecord storage record = playerRecords[_player];
         record.totalWins++;
         record.lastPlayTime = block.timestamp;
@@ -50,6 +51,7 @@ contract CasualLobbyLeaderboard {
             record.bestTime = _winTime;
         }
 
+        // Add to leaderboard
         GameRecord memory newRecord = GameRecord({
             player: _player,
             farcasterUsername: _farcasterUsername,
@@ -58,6 +60,7 @@ contract CasualLobbyLeaderboard {
             score: _score
         });
 
+        // Insert in sorted position (fastest first)
         uint256 insertIndex = leaderboard.length;
         for (uint256 i = 0; i < leaderboard.length; i++) {
             if (_winTime < leaderboard[i].winTime) {
@@ -66,6 +69,7 @@ contract CasualLobbyLeaderboard {
             }
         }
 
+        // Shift elements and insert
         if (insertIndex < MAX_LEADERBOARD_SIZE) {
             leaderboard.push(newRecord);
             for (uint256 i = leaderboard.length - 1; i > insertIndex; i--) {
@@ -73,6 +77,7 @@ contract CasualLobbyLeaderboard {
             }
             leaderboard[insertIndex] = newRecord;
 
+            // Trim to max size
             if (leaderboard.length > MAX_LEADERBOARD_SIZE) {
                 leaderboard.pop();
             }

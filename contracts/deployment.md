@@ -24,12 +24,14 @@
   - Farcaster username integration
 
 ### CasualLobbyLeaderboard.sol
-- **Contract Address**: `TBD`
+- **Contract Address**: `0x49c08d1702ee7cc10352f96b92c1fcc1e1cddbbe`
 - **Purpose**: Records fastest game wins for casual lobbies
 - **Features**:
-  - Fastest win time tracking
-  - Leaderboard by speed
+  - Fastest win time tracking (in seconds)
+  - Sorted leaderboard by speed (fastest first)
   - Player records management
+  - Enhanced code comments
+  - Automatic leaderboard trimming to max size
   - Farcaster username integration
 
 ## Network Information
