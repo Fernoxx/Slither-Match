@@ -6,7 +6,7 @@ A Farcaster miniapp + Base smart contract game where 3-5 players compete in snak
 
 - **Entry Fee**: $1 USDC on Base
 - **Players**: 3-5 per lobby
-- **Duration**: 3 minutes max
+- **Duration**: 5 minutes max
 - **Countdown**: 30 seconds after 3 players join
 - **Winner Takes All**: 100% of pooled entry fees
 
@@ -105,13 +105,13 @@ npm run deploy:baseSepolia
 
 ### Win Conditions
 1. **Last Snake Standing**: Survive while others crash
-2. **Highest Score**: If multiple snakes survive 3 minutes
+2. **Highest Score**: If multiple snakes survive 5 minutes
 
 ### Game Flow
 1. Players join lobby and pay 1 USDC entry fee
 2. 30-second countdown starts when 3rd player joins
 3. Up to 2 more players can join during countdown
-4. Game runs for maximum 3 minutes
+4. Game runs for maximum 5 minutes
 5. Winner gets 100% of prize pool
 6. Automatic refunds available if lobby doesn't fill in 5 minutes
 
