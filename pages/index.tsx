@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import SnakeGame from '../components/SnakeGame'
+import MultiplayerSnakeGame from '../components/MultiplayerSnakeGame'
+import freeplayContract from '../lib/freeplayContract'
 
 // Wallet integration for Farcaster miniapps
 declare global {
@@ -30,6 +32,10 @@ export default function Home() {
   const [casualPlayers, setCasualPlayers] = useState<Array<{id: string, username: string, pfp?: string}>>([])
   const [casualCountdown, setCasualCountdown] = useState<number | null>(null)
   const [isCasualLobby, setIsCasualLobby] = useState(false)
+  const [isFreeplayLobby, setIsFreeplayLobby] = useState(false)
+  const [showOnchainSave, setShowOnchainSave] = useState(false)
+  const [freeplayScore, setFreeplayScore] = useState(0)
+  const [isSavingOnchain, setIsSavingOnchain] = useState(false)
 
   // Connect Farcaster wallet (only for paid lobby)
   const connectWallet = useCallback(async () => {
@@ -72,6 +78,16 @@ export default function Home() {
     setGameStarted(true) // Start immediately
   }, [])
 
+  // Join freeplay lobby
+  const joinFreeplayLobby = useCallback(async () => {
+    await connectWallet()
+    if (walletAddress || currentView === 'freeplay-lobby') {
+      setCurrentView('freeplay-lobby')
+      setIsFreeplayLobby(true)
+      setGameStarted(true)
+    }
+  }, [connectWallet, walletAddress, currentView])
+
   // Join paid lobby
   const joinPaidLobby = useCallback(async () => {
     await connectWallet()
@@ -79,9 +95,7 @@ export default function Home() {
       setCurrentView('paid-lobby')
       setIsPaidLobby(true)
       setPlayers(['You'])
-      // Simulate more players joining
-      setTimeout(() => setPlayers(['You', 'Player Alpha']), 2000)
-      setTimeout(() => setPlayers(['You', 'Player Alpha', 'Player Beta']), 4000)
+          // Note: Mock data removed - real players will join via WebSocket connection
       
       // Start game when 3+ players
       setTimeout(() => setCountdown(3), 6000)
@@ -127,22 +141,7 @@ export default function Home() {
       }, 1000)
     }
     
-    // Simulate players joining
-    if (!joinLobbyId) {
-      setTimeout(() => {
-        setCasualPlayers(prev => [...prev, 
-          { id: 'player-2', username: 'Player Beta', pfp: undefined }
-        ])
-      }, 3000)
-      
-      setTimeout(() => {
-        setCasualPlayers(prev => [...prev, 
-          { id: 'player-3', username: 'Player Gamma', pfp: undefined }
-        ])
-        // Start countdown when 3 players
-        setCasualCountdown(30)
-      }, 6000)
-    }
+    // Note: Mock data removed - real players will join via WebSocket connection
   }, [])
 
   // Share casual lobby link
@@ -215,6 +214,46 @@ export default function Home() {
     setGameStarted(false)
   }, [])
 
+  // Handle freeplay player death
+  const handleFreeplayDeath = useCallback((score: number, canRespawn: boolean) => {
+    if (canRespawn) {
+      setFreeplayScore(score)
+      setShowOnchainSave(true)
+    }
+  }, [])
+
+  // Save score onchain
+  const saveScoreOnchain = useCallback(async () => {
+    if (!walletAddress || isSavingOnchain) return
+
+    setIsSavingOnchain(true)
+    try {
+      await freeplayContract.connect()
+      const tx = await freeplayContract.saveScore(
+        walletAddress,
+        'Player', // TODO: Get from Farcaster data
+        freeplayScore,
+        0 // TODO: Track kills in multiplayer game
+      )
+
+      // Wait for transaction confirmation
+      await freeplayContract.waitForTransaction(tx)
+      
+      alert('Score saved to blockchain successfully!')
+      setShowOnchainSave(false)
+    } catch (error) {
+      console.error('Failed to save score:', error)
+      alert('Failed to save score to blockchain. Please try again.')
+    } finally {
+      setIsSavingOnchain(false)
+    }
+  }, [walletAddress, freeplayScore, isSavingOnchain])
+
+  // Close onchain save modal
+  const closeOnchainSave = useCallback(() => {
+    setShowOnchainSave(false)
+  }, [])
+
   // Share win to Farcaster
   const shareWin = useCallback(() => {
     const gameTime = gameStartTime ? Math.floor((Date.now() - gameStartTime) / 1000) : 0
@@ -255,6 +294,10 @@ export default function Home() {
     setCasualPlayers([])
     setCasualCountdown(null)
     setIsCasualLobby(false)
+    // Reset freeplay states
+    setIsFreeplayLobby(false)
+    setShowOnchainSave(false)
+    setFreeplayScore(0)
   }, [])
 
   return (
@@ -306,6 +349,15 @@ export default function Home() {
               Casual Lobby
             </button>
             <button
+              onClick={joinFreeplayLobby}
+              disabled={isConnecting}
+              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 
+                         text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 
+                         transform hover:scale-105 hover:shadow-xl disabled:opacity-50"
+            >
+              {isConnecting ? 'Connecting...' : 'Freeplay Lobby (30 Players)'}
+            </button>
+            <button
               onClick={joinBotLobby}
               className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 
                          text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 
@@ -332,6 +384,14 @@ export default function Home() {
               <div className="flex items-start">
                 <span className="text-green-400 mr-2">•</span>
                 Winner takes all
+              </div>
+              <div className="flex items-start">
+                <span className="text-purple-400 mr-2">•</span>
+                Freeplay: 30 players, instant respawn
+              </div>
+              <div className="flex items-start">
+                <span className="text-pink-400 mr-2">•</span>
+                Save scores onchain to leaderboard
               </div>
             </div>
           </div>
@@ -482,20 +542,35 @@ export default function Home() {
 
       {gameStarted && !gameEnded && (
         <div className="z-10">
-          <SnakeGame 
-            isPlaying={true}
-            isBot={false}
-            isPreview={false}
-            isPaidLobby={isPaidLobby}
-            isCasualLobby={isCasualLobby}
-            onScoreChange={(score) => setGameScore(score)}
-            onGameOver={(score) => {
-              handleGameEnd(score, false)
-            }}
-            onGameWin={(score, isWinner) => {
-              handleGameEnd(score, isWinner || false)
-            }}
-          />
+          {isFreeplayLobby ? (
+            <MultiplayerSnakeGame
+              gameType="freeplay"
+              playerInfo={{
+                address: walletAddress || 'anonymous',
+                username: 'Player', // Will be updated by Farcaster data
+                profilePic: undefined
+              }}
+              onGameEnd={(data) => {
+                console.log('Freeplay game ended:', data)
+              }}
+              onPlayerDied={handleFreeplayDeath}
+            />
+          ) : (
+            <SnakeGame 
+              isPlaying={true}
+              isBot={false}
+              isPreview={false}
+              isPaidLobby={isPaidLobby}
+              isCasualLobby={isCasualLobby}
+              onScoreChange={(score) => setGameScore(score)}
+              onGameOver={(score) => {
+                handleGameEnd(score, false)
+              }}
+              onGameWin={(score, isWinner) => {
+                handleGameEnd(score, isWinner || false)
+              }}
+            />
+          )}
         </div>
       )}
 
@@ -554,9 +629,50 @@ export default function Home() {
              >
                Play Again
              </button>
-           </div>
-         </div>
-       )}
+                     </div>
+        </div>
+      )}
+
+      {/* Onchain Save Modal */}
+      {showOnchainSave && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-[#1a1a2e] border border-[#2d2d5e] rounded-lg p-8 max-w-md w-full mx-4">
+            <h2 className="text-2xl font-bold mb-4 text-purple-400">Save Score Onchain</h2>
+            <div className="mb-6">
+              <p className="text-gray-300 mb-4">
+                You died with a score of <span className="text-cyan-400 font-bold">{freeplayScore}</span>!
+              </p>
+              <p className="text-gray-300 text-sm">
+                Save your score to the blockchain leaderboard? This will create a transaction on Base network.
+              </p>
+            </div>
+            
+            <div className="flex gap-4">
+              <button
+                onClick={saveScoreOnchain}
+                disabled={isSavingOnchain}
+                className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 
+                           text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 
+                           transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSavingOnchain ? 'Saving...' : 'Save Onchain'}
+              </button>
+              <button
+                onClick={closeOnchainSave}
+                disabled={isSavingOnchain}
+                className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg 
+                           transition-all duration-300 disabled:opacity-50"
+              >
+                Skip
+              </button>
+            </div>
+            
+            <div className="mt-4 text-xs text-gray-400 text-center">
+              Contract: {freeplayContract.contractAddress}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
